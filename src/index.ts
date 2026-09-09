@@ -6,13 +6,13 @@ const app = new Elysia()
         const catalogue = await db
             .select({
                 name: inventoryTable.name,
-                price: inventoryTable.priceCentsX10,
+                priceCentsX10: inventoryTable.priceCentsX10,
             })
             .from(inventoryTable);
 
         return catalogue;
     })
-    .listen(3000);
+    .listen(process.env.PORT ?? 3000);
 
 console.log(
     `🦊 Elysia is running at ${app.server?.hostname}:${app.server?.port}`,
