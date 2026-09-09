@@ -2,17 +2,17 @@ import { eq } from "drizzle-orm";
 import { authSessionsTable, db } from "../db";
 
 async function addAuthSessionToDatabase(authSession: AuthSession) {
-    // TODO :
+    await db.insert(authSessionsTable).values({
+        id: authSession.id,
+        secretHash: authSession.secretHash,
+        createdAt: authSession.createdAt,
+        lastVerifiedAt: authSession.tokenLastVerifiedAt,
+    });
 }
 
 async function getAuthSessionFromDatabase(
-    authSessionIdString: string,
+    authSessionId: string,
 ): Promise<AuthSession | null> {
-
-
-    // TODO : if auth session id string is not number, return null
-    // TODO : else, authSessionId
-
     const sessions = await db
         .select({
             id: authSessionsTable.id,
@@ -26,13 +26,21 @@ async function getAuthSessionFromDatabase(
     if (sessions.length !== 1) return null;
 
     const session = sessions[0];
+    if (!(session.secretHashBuffer instanceof Uint8Array)) return null;
 
-    // TODO : fix the types
-    return { ...session, secretHash: session.secretHashBuffer };
+    return {
+        id: session.id,
+        secretHash: new Uint8Array(session.secretHashBuffer),
+        tokenLastVerifiedAt: session.tokenLastVerifiedAt,
+        createdAt: session.createdAt,
+    };
 }
 
 async function updateAuthSessionInDatabase(authSession: AuthSession) {
-    // TODO :
+    await db
+        .update(authSessionsTable)
+        .set({ lastVerifiedAt: authSession.tokenLastVerifiedAt })
+        .where(eq(authSessionsTable.id, authSession.id));
 }
 
 // ---

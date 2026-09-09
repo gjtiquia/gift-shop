@@ -1,11 +1,10 @@
 import { boolean } from "drizzle-orm/cockroach-core/columns/bool";
-import { blob } from "drizzle-orm/mysql-core/columns/blob";
-import { int, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { blob, int, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 // ref: https://github.com/lucia-auth/lucia/blob/main/code/auth_session.ts
 // we omit the userId cuz we dont have the notion of "users" to keep things simple
 export const authSessionsTable = sqliteTable("auth_sessions_table", {
-    id: int().primaryKey({ autoIncrement: true }),
+    id: text().primaryKey(),
     secretHash: blob().notNull(),
     createdAt: int({ mode: "timestamp_ms" }).notNull(),
     lastVerifiedAt: int({ mode: "timestamp_ms" }).notNull(),
