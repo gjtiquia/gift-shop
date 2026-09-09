@@ -6,7 +6,7 @@ const app = new Elysia()
         const catalogue = await db
             .select({
                 name: inventoryTable.name,
-                price: inventoryTable.price,
+                price: inventoryTable.priceCentsX10,
             })
             .from(inventoryTable);
 

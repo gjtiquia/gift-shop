@@ -55,3 +55,11 @@ bun i -D prettier
 
 # create .prettierrc
 ```
+
+### docs
+
+#### drizzle
+
+- SQLite Data Types: https://orm.drizzle.team/docs/sqlite/column-types
+- SQLite Select: https://orm.drizzle.team/docs/sqlite/select
+- 
