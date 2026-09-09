@@ -73,7 +73,7 @@ bun i -D prettier
 # create .prettierrc
 ```
 
-### docs
+### docs and notes
 
 #### elysia
 - Best Practices - MVC pattern: https://elysiajs.com/essential/best-practice.html
@@ -98,7 +98,7 @@ notes
 
 ## todos
 
-- [ ] setup tailscale
+- [ ] setup tailwind
 - [ ] admin button in home page
 - [ ] admin login page
 - [ ] admin inventory page
