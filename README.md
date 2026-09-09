@@ -82,4 +82,4 @@ bun i -D prettier
 
 - SQLite Data Types: https://orm.drizzle.team/docs/sqlite/column-types
 - SQLite Select: https://orm.drizzle.team/docs/sqlite/select
-- 
+- SQLite Joins: https://orm.drizzle.team/docs/sqlite/joins
