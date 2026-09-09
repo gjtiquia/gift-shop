@@ -35,6 +35,7 @@ production
 - [bun](https://bun.sh/)
 - [elysia](https://elysiajs.com/)
 - [drizzle with SQLite via Bun SQL](https://orm.drizzle.team/)
+- [simplified handrolled version of lucia auth](https://lucia-auth.com/)
 
 DX
 - formatter: [prettier](https://prettier.io/)
@@ -83,3 +84,24 @@ bun i -D prettier
 - SQLite Data Types: https://orm.drizzle.team/docs/sqlite/column-types
 - SQLite Select: https://orm.drizzle.team/docs/sqlite/select
 - SQLite Joins: https://orm.drizzle.team/docs/sqlite/joins
+
+#### lucia auth
+
+links
+- https://lucia-auth.com/
+- https://github.com/lucia-auth/lucia/blob/main/code/auth_session.ts
+
+notes
+- Lucia is deprecated, but is a one-file replacement
+- at the same time, we dont have "users", just a single "admin"
+- so we can reference the implementation and create a super simplified version of it
+
+## todos
+
+- [ ] setup tailscale
+- [ ] admin button in home page
+- [ ] admin login page
+- [ ] admin inventory page
+- [ ] shop catalogue page
+- [ ] shop cart page
+- [ ] orders page
