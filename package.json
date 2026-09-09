@@ -1,19 +1,20 @@
 {
-  "name": "gift-shop",
-  "version": "1.0.50",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "bun run --watch src/index.ts"
-  },
-  "dependencies": {
-    "dotenv": "^17.4.2",
-    "drizzle-orm": "^1.0.0-rc.4",
-    "elysia": "latest"
-  },
-  "devDependencies": {
-    "@types/bun": "^1.4.2",
-    "bun-types": "latest",
-    "drizzle-kit": "^1.0.0-rc.4"
-  },
-  "module": "src/index.js"
+    "name": "gift-shop",
+    "version": "1.0.50",
+    "scripts": {
+        "start": "bun run src/index.ts",
+        "dev": "bun run --watch src/index.ts",
+        "db:push": "npx drizzle-kit push"
+    },
+    "dependencies": {
+        "dotenv": "^17.4.2",
+        "drizzle-orm": "^1.0.0-rc.4",
+        "elysia": "latest"
+    },
+    "devDependencies": {
+        "@types/bun": "^1.4.2",
+        "bun-types": "latest",
+        "drizzle-kit": "^1.0.0-rc.4"
+    },
+    "module": "src/index.js"
 }

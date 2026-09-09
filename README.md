@@ -4,8 +4,14 @@
 ## commands
 
 ```bash
+# start server at port 3000
+bun run start
+
 # dev server at port 3000
 bun run dev
+
+# push schema to db.sqlite
+bun run db:push
 ```
 
 ## tech stack
