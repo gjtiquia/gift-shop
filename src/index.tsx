@@ -1,4 +1,5 @@
 import { Elysia } from "elysia";
+import { html, Html } from "@elysia/html";
 import { db, inventoryTable } from "./db";
 
 const app = new Elysia()
@@ -12,6 +13,17 @@ const app = new Elysia()
 
         return catalogue;
     })
+    .use(html())
+    .get("/", () => (
+        <html lang="en">
+            <head>
+                <title>Hello World </title>
+            </head>
+            <body>
+                <h1>Hello World </h1>
+            </body>
+        </html>
+    ))
     .listen(process.env.PORT ?? 3000);
 
 console.log(

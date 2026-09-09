@@ -2,11 +2,12 @@
     "name": "gift-shop",
     "version": "1.0.50",
     "scripts": {
-        "start": "bun run src/index.ts",
-        "dev": "bun run --watch src/index.ts",
+        "start": "bun run src/index.tsx",
+        "dev": "bun run --watch src/index.tsx",
         "db:push": "npx drizzle-kit push"
     },
     "dependencies": {
+        "@elysia/html": "^1.4.1",
         "dotenv": "^17.4.2",
         "drizzle-orm": "^1.0.0-rc.4",
         "elysia": "latest"
