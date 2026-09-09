@@ -74,6 +74,10 @@ bun i -D prettier
 
 ### docs
 
+#### elysia
+- Best Practices - MVC pattern: https://elysiajs.com/essential/best-practice.html
+- HTML and JSX: https://elysiajs.com/plugins/html
+
 #### drizzle
 
 - SQLite Data Types: https://orm.drizzle.team/docs/sqlite/column-types
