@@ -1,10 +1,16 @@
 import { Elysia } from "elysia";
-import { db, usersTable } from "./db";
+import { db, inventoryTable } from "./db";
 
 const app = new Elysia()
-    .get("/", async () => {
-        const users = await db.select().from(usersTable);
-        return users;
+    .get("/api/catalogue", async () => {
+        const catalogue = await db
+            .select({
+                name: inventoryTable.name,
+                price: inventoryTable.price,
+            })
+            .from(inventoryTable);
+
+        return catalogue;
     })
     .listen(3000);
 
