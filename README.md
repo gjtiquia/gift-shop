@@ -1,6 +1,5 @@
 # gift-shop
 
-
 ## commands
 
 ```bash
@@ -22,7 +21,7 @@ production
 - [drizzle with SQLite via Bun SQL](https://orm.drizzle.team/)
 
 DX
-- 
+- formatter: [prettier](https://prettier.io/)
 
 ### setup steps
 
@@ -47,4 +46,12 @@ bun add -D drizzle-kit@rc @types/bun
 
 # apply changes to db
 npx drizzle-kit push
+```
+
+#### prettier
+
+```bash
+bun i -D prettier
+
+# create .prettierrc
 ```
