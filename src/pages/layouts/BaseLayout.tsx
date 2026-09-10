@@ -1,6 +1,8 @@
 import { html, Html } from "@elysia/html";
 
 export function BaseLayout(props: { children?: JSX.Element | JSX.Element[] }) {
+    const version = process.env.VERSION;
+
     return (
         <html lang="en">
             <head>
@@ -13,7 +15,10 @@ export function BaseLayout(props: { children?: JSX.Element | JSX.Element[] }) {
                 />
                 <script src="/public/htmx.min.js"></script>
                 {/* <link rel="stylesheet" href="/public/styles.css" /> */}
-                {/* <script type="module" src="/public/index.js"></script> */}
+                <script
+                    type="module"
+                    src={`/public/index.js?v=${version}`}
+                ></script>
                 <title>Gift Shop</title>
             </head>
             <body

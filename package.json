@@ -2,8 +2,12 @@
     "name": "gift-shop",
     "version": "1.0.50",
     "scripts": {
-        "start": "bun run src/index.tsx",
-        "dev": "bun run --watch src/index.tsx",
+        "start": "bun run build && bun run src/index.tsx",
+        "dev": "concurrently 'bun run dev:server' 'bun run dev:scripts'",
+        "dev:server": "bun run --watch src/index.tsx",
+        "dev:scripts": "bun build ./src/pages/scripts/index.ts --outdir ./src/pages/public/ --watch",
+        "build": "bun run build:scripts",
+        "build:scripts": "bun build ./src/pages/scripts/index.ts --outdir ./src/pages/public/",
         "db:push": "drizzle-kit push"
     },
     "dependencies": {
@@ -17,6 +21,7 @@
     "devDependencies": {
         "@types/bun": "^1.4.2",
         "bun-types": "latest",
+        "concurrently": "^10.0.4",
         "prettier": "^3.9.6"
     },
     "module": "src/index.js"

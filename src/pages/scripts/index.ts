@@ -1,1 +1,1 @@
-// TODO : bundle to JS and import in BaseLayout
+console.log("Hello World!");
