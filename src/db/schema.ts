@@ -5,7 +5,7 @@ import { blob, int, sqliteTable, text } from "drizzle-orm/sqlite-core";
 // we omit the userId cuz we dont have the notion of "users" to keep things simple
 export const authSessionsTable = sqliteTable("auth_sessions_table", {
     id: text().primaryKey(),
-    secretHash: blob().notNull(),
+    secretHash: blob({ mode: "buffer" }).notNull(),
     createdAt: int({ mode: "timestamp_ms" }).notNull(),
     lastVerifiedAt: int({ mode: "timestamp_ms" }).notNull(),
 });

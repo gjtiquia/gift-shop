@@ -4,7 +4,7 @@ import { authSessionsTable, db } from "../db";
 async function addAuthSessionToDatabase(authSession: AuthSession) {
     await db.insert(authSessionsTable).values({
         id: authSession.id,
-        secretHash: authSession.secretHash,
+        secretHash: Buffer.from(authSession.secretHash),
         createdAt: authSession.createdAt,
         lastVerifiedAt: authSession.tokenLastVerifiedAt,
     });
