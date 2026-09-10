@@ -123,7 +123,7 @@ notes
 - [x] shop catalogue page
 - [x] setup htmx so forms can use resource-oriented HTTP verbs
 - [x] setup tailwind
-- [ ] image uploading
+- [x] image uploading (JPEG, PNG, or WebP up to 5 MB)
 - [ ] shop cart page
 - [ ] orders page
 - [ ] admin button in home page

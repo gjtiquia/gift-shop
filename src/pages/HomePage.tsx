@@ -10,35 +10,65 @@ export async function HomePage() {
             name: inventoryTable.name,
             priceCentsX10: inventoryTable.priceCentsX10,
             quantity: inventoryTable.quantity,
+            imageId: inventoryTable.imageId,
         })
         .from(inventoryTable)
         .orderBy(asc(inventoryTable.id));
 
     return (
         <BaseLayout>
-            <h1>Gift Shop - Catalogue</h1>
-            <table>
-                <thead>
-                    <tr>
-                        <th scope="col">Name</th>
-                        <th scope="col">Price</th>
-                        <th scope="col">Availability</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {items.map((item) => (
-                        <tr>
-                            <td>{item.name}</td>
-                            <td>{formatPrice(item.priceCentsX10)}</td>
-                            <td>
-                                {item.quantity === 0
-                                    ? "Out of stock"
-                                    : `${item.quantity} in stock`}
-                            </td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
+            <main class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+                <header class="mb-8">
+                    <h1 class="text-3xl font-semibold tracking-tight text-gray-950">
+                        Gift Shop - Catalogue
+                    </h1>
+                </header>
+
+                {items.length === 0 ? (
+                    <p class="rounded-lg bg-gray-100 p-6 text-gray-600">
+                        No products are available yet.
+                    </p>
+                ) : (
+                    <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                        {items.map((item) => (
+                            <article class="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+                                {item.imageId !== null ? (
+                                    <img
+                                        class="aspect-4/3 w-full bg-gray-100 object-cover"
+                                        src={`/api/images/${item.imageId}`}
+                                        width="640"
+                                        height="480"
+                                        loading="lazy"
+                                        decoding="async"
+                                        alt={`Photo of ${item.name}`}
+                                    />
+                                ) : (
+                                    <div
+                                        class="flex aspect-4/3 w-full items-center justify-center bg-gray-100 px-4 text-center text-sm text-gray-500"
+                                        role="img"
+                                        aria-label={`No image available for ${item.name}`}
+                                    >
+                                        No image available
+                                    </div>
+                                )}
+                                <div class="grid gap-2 p-4">
+                                    <h2 class="text-lg font-semibold text-gray-950">
+                                        {item.name}
+                                    </h2>
+                                    <p class="text-base font-medium text-gray-900">
+                                        {formatPrice(item.priceCentsX10)}
+                                    </p>
+                                    <p class="text-sm text-gray-600">
+                                        {item.quantity === 0
+                                            ? "Out of stock"
+                                            : `${item.quantity} in stock`}
+                                    </p>
+                                </div>
+                            </article>
+                        ))}
+                    </div>
+                )}
+            </main>
         </BaseLayout>
     );
 }

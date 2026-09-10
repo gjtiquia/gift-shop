@@ -1,6 +1,12 @@
 import { afterAll, expect, test } from "bun:test";
 import { Database } from "bun:sqlite";
 import { Elysia } from "elysia";
+import { existsSync, mkdirSync, rmSync } from "node:fs";
+import { join } from "node:path";
+import {
+    imageDataDirectory,
+    maximumImageSizeBytes,
+} from "../api/images/storage";
 import { createTemporaryDatabase } from "../test/tempDbForTests";
 
 const temporaryDatabase = createTemporaryDatabase("gift-shop-auth-");
@@ -128,7 +134,11 @@ test("a successful login creates a cookie-backed admin session", async () => {
         new Request("http://localhost/admin", { headers: { cookie } }),
     );
     expect(adminPage.status).toBe(200);
-    expect(await adminPage.text()).toContain("Gift Shop - Admin Page");
+    const adminHtml = await adminPage.text();
+    expect(adminHtml).toContain("Gift Shop - Admin Page");
+    expect(adminHtml).toContain("data-reset-after-success");
+    expect(adminHtml).not.toContain("hx-on--after-request");
+    expect(adminHtml).not.toContain("hx-on--response-error");
     expect(adminPage.headers.get("set-cookie")).toContain("Max-Age=864000");
 
     const loginPage = await app.handle(
@@ -367,7 +377,21 @@ test("an admin can create, update, and delete inventory", async () => {
     );
     const adminHtml = await adminResponse.text();
     expect(adminHtml).toContain(`hx-put="/api/inventory/${created.id}"`);
+    expect(adminHtml).toContain(`method="post"`);
+    expect(adminHtml).toContain(`action="/api/inventory/${created.id}"`);
     expect(adminHtml).toContain(`hx-delete="/api/inventory/${created.id}"`);
+    expect(adminHtml).toContain(
+        `aria-label="Name for inventory item ${created.id}"`,
+    );
+    expect(adminHtml).toContain(
+        `aria-label="Price for inventory item ${created.id}"`,
+    );
+    expect(adminHtml).toContain(
+        `aria-label="Quantity for inventory item ${created.id}"`,
+    );
+    expect(adminHtml).toContain(
+        `aria-label="Notes for inventory item ${created.id}"`,
+    );
     expect(adminHtml).toContain("Delete this item?");
 
     const deleteResponse = await app.handle(
@@ -384,5 +408,265 @@ test("an admin can create, update, and delete inventory", async () => {
             )
             .get()?.count,
     ).toBe(0);
+    database.close();
+});
+
+test("an admin can add, replace, remove, and retrieve an inventory image", async () => {
+    const loginResponse = await postPassword("correct-password");
+    const cookie = loginResponse.headers.get("set-cookie")?.split(";", 1)[0];
+    if (!cookie) throw new Error("login did not set a session cookie");
+
+    const requestInventory = (
+        method: "POST" | "PUT",
+        url: string,
+        body: FormData,
+    ) =>
+        app.handle(
+            new Request(url, {
+                method,
+                headers: {
+                    "Sec-Fetch-Site": "same-origin",
+                    "HX-Request": "true",
+                    cookie,
+                },
+                body,
+            }),
+        );
+    const inventoryForm = (name: string) => {
+        const form = new FormData();
+        form.set("name", name);
+        form.set("price", "8.00");
+        form.set("quantity", "1");
+        return form;
+    };
+
+    const png = new Uint8Array([
+        0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+    ]);
+    const createForm = inventoryForm("Image gift");
+    createForm.set(
+        "image",
+        new File([png], "untrusted.jpg", { type: "image/jpeg" }),
+    );
+    const createResponse = await requestInventory(
+        "POST",
+        "http://localhost/api/inventory",
+        createForm,
+    );
+    expect(createResponse.status).toBe(201);
+
+    const database = new Database(databasePath);
+    const created = database
+        .query<{ id: number; imageId: number }, [string]>(
+            "SELECT id, imageId FROM inventory_table WHERE name = ?",
+        )
+        .get("Image gift");
+    if (!created) throw new Error("inventory image was not created");
+
+    const firstImage = database
+        .query<{ filename: string }, [number]>(
+            "SELECT filename FROM images_table WHERE id = ?",
+        )
+        .get(created.imageId);
+    if (!firstImage) throw new Error("image record was not created");
+
+    const firstImageResponse = await app.handle(
+        new Request(`http://localhost/api/images/${created.imageId}`),
+    );
+    expect(firstImageResponse.status).toBe(200);
+    expect(firstImageResponse.headers.get("content-type")).toBe("image/png");
+    expect(firstImageResponse.headers.get("cache-control")).toBe(
+        "public, max-age=31536000, immutable",
+    );
+    expect(firstImageResponse.headers.get("x-content-type-options")).toBe(
+        "nosniff",
+    );
+    expect(new Uint8Array(await firstImageResponse.arrayBuffer())).toEqual(png);
+    expect(
+        await app.handle(new Request("http://localhost/api/images/not-an-id")),
+    ).toMatchObject({ status: 404 });
+    expect(
+        await app.handle(new Request("http://localhost/api/images/999999")),
+    ).toMatchObject({ status: 404 });
+
+    const webp = new Uint8Array([
+        0x52, 0x49, 0x46, 0x46, 0x04, 0x00, 0x00, 0x00, 0x57, 0x45, 0x42, 0x50,
+    ]);
+    const replaceForm = inventoryForm("Image gift");
+    replaceForm.set("image", new File([webp], "photo.png"));
+    const replaceResponse = await app.handle(
+        new Request(`http://localhost/api/inventory/${created.id}`, {
+            method: "POST",
+            headers: {
+                "Sec-Fetch-Site": "same-origin",
+                cookie,
+            },
+            body: replaceForm,
+        }),
+    );
+    expect(replaceResponse.status).toBe(303);
+    expect(replaceResponse.headers.get("location")).toBe("/admin");
+
+    const replaced = database
+        .query<{ imageId: number }, [number]>(
+            "SELECT imageId FROM inventory_table WHERE id = ?",
+        )
+        .get(created.id);
+    expect(replaced?.imageId).not.toBe(created.imageId);
+    expect(
+        await app.handle(
+            new Request(`http://localhost/api/images/${created.imageId}`),
+        ),
+    ).toMatchObject({ status: 404 });
+    expect(existsSync(join(imageDataDirectory, firstImage.filename))).toBe(
+        false,
+    );
+
+    const replacementImage = database
+        .query<{ filename: string }, [number]>(
+            "SELECT filename FROM images_table WHERE id = ?",
+        )
+        .get(replaced!.imageId);
+    if (!replacementImage) throw new Error("replacement image was not created");
+
+    const removeForm = inventoryForm("Image gift");
+    removeForm.set("removeImage", "1");
+    const removeResponse = await requestInventory(
+        "PUT",
+        `http://localhost/api/inventory/${created.id}`,
+        removeForm,
+    );
+    expect(removeResponse.status).toBe(200);
+    expect(
+        database
+            .query<{ imageId: number | null }, [number]>(
+                "SELECT imageId FROM inventory_table WHERE id = ?",
+            )
+            .get(created.id)?.imageId,
+    ).toBeNull();
+    expect(
+        database
+            .query<{ count: number }, []>(
+                "SELECT COUNT(*) AS count FROM images_table",
+            )
+            .get()?.count,
+    ).toBe(0);
+    expect(
+        existsSync(join(imageDataDirectory, replacementImage.filename)),
+    ).toBe(false);
+
+    const invalidForm = inventoryForm("Invalid image gift");
+    invalidForm.set("image", new File(["not an image"], "fake.png"));
+    const invalidResponse = await requestInventory(
+        "POST",
+        "http://localhost/api/inventory",
+        invalidForm,
+    );
+    expect(invalidResponse.status).toBe(422);
+    expect(await invalidResponse.text()).toContain("JPEG, PNG, or WebP");
+
+    const oversizedForm = inventoryForm("Oversized image gift");
+    oversizedForm.set(
+        "image",
+        new File(
+            [png, new Uint8Array(maximumImageSizeBytes - png.length + 1)],
+            "too-large.png",
+        ),
+    );
+    const oversizedResponse = await requestInventory(
+        "POST",
+        "http://localhost/api/inventory",
+        oversizedForm,
+    );
+    expect(oversizedResponse.status).toBe(422);
+    expect(await oversizedResponse.text()).toContain("5 MB or smaller");
+
+    const directlyDeletedForm = inventoryForm("Directly deleted image gift");
+    directlyDeletedForm.set("image", new File([png], "delete-me.png"));
+    expect(
+        await requestInventory(
+            "POST",
+            "http://localhost/api/inventory",
+            directlyDeletedForm,
+        ),
+    ).toMatchObject({ status: 201 });
+    const directlyDeleted = database
+        .query<{ id: number; imageId: number; filename: string }, [string]>(
+            `SELECT inventory_table.id, inventory_table.imageId, images_table.filename
+             FROM inventory_table
+             JOIN images_table ON images_table.id = inventory_table.imageId
+             WHERE inventory_table.name = ?`,
+        )
+        .get("Directly deleted image gift");
+    if (!directlyDeleted) throw new Error("delete test image was not created");
+
+    const directlyDeletedPath = join(
+        imageDataDirectory,
+        directlyDeleted.filename,
+    );
+    rmSync(directlyDeletedPath);
+    mkdirSync(directlyDeletedPath);
+
+    const originalConsoleError = console.error;
+    console.error = () => undefined;
+    let directDeleteResponse: Response;
+    try {
+        directDeleteResponse = await app.handle(
+            new Request(
+                `http://localhost/api/inventory/${directlyDeleted.id}`,
+                {
+                    method: "DELETE",
+                    headers: {
+                        "Sec-Fetch-Site": "same-origin",
+                        "HX-Request": "true",
+                        cookie,
+                    },
+                },
+            ),
+        );
+    } finally {
+        console.error = originalConsoleError;
+    }
+    expect(directDeleteResponse.status).toBe(200);
+    expect(
+        database
+            .query<{ count: number }, [number]>(
+                "SELECT COUNT(*) AS count FROM images_table WHERE id = ?",
+            )
+            .get(directlyDeleted.imageId)?.count,
+    ).toBe(1);
+    expect(
+        await app.handle(
+            new Request(
+                `http://localhost/api/images/${directlyDeleted.imageId}`,
+            ),
+        ),
+    ).toMatchObject({ status: 404 });
+
+    rmSync(directlyDeletedPath, { recursive: true });
+    const retryCleanupResponse = await requestInventory(
+        "PUT",
+        `http://localhost/api/inventory/${created.id}`,
+        inventoryForm("Image gift"),
+    );
+    expect(retryCleanupResponse.status).toBe(200);
+    expect(
+        database
+            .query<{ count: number }, [number]>(
+                "SELECT COUNT(*) AS count FROM images_table WHERE id = ?",
+            )
+            .get(directlyDeleted.imageId)?.count,
+    ).toBe(0);
+
+    await app.handle(
+        new Request(`http://localhost/api/inventory/${created.id}`, {
+            method: "DELETE",
+            headers: {
+                "Sec-Fetch-Site": "same-origin",
+                "HX-Request": "true",
+                cookie,
+            },
+        }),
+    );
     database.close();
 });
