@@ -1,4 +1,5 @@
 import { Elysia, t } from "elysia";
+import { isValidCsrfRequest } from "./csrf";
 import { createAuthSession } from "./lucia";
 import {
     authSessionCookieName,
@@ -9,6 +10,10 @@ import {
 export const auth = new Elysia({ prefix: "auth" }).post(
     "/login",
     async ({ body, cookie, redirect, request }) => {
+        if (!isValidCsrfRequest(request)) {
+            return new Response(null, { status: 403 });
+        }
+
         const adminPassword = process.env.ADMIN_PASSWORD;
         if (!adminPassword || body.password !== adminPassword) {
             return redirect("/admin/login?error=1", 303);
