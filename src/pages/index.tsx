@@ -1,6 +1,7 @@
 import { Elysia } from "elysia";
-import { HomePage } from "./HomePage";
 import { html, Html } from "@elysia/html";
+import { staticPlugin } from "@elysia/static";
+import { HomePage } from "./HomePage";
 import { AdminLoginPage } from "./AdminLoginPage";
 import { AdminPage } from "./AdminPage";
 import {
@@ -9,6 +10,12 @@ import {
 } from "../auth/sessionCookie";
 
 export const pages = new Elysia()
+    .use(
+        staticPlugin({
+            assets: "src/pages/public",
+            prefix: "/",
+        }),
+    )
     .use(html())
     .get("/", () => <HomePage />)
     .get("/admin/login", async ({ cookie, query, redirect, request }) => {

@@ -7,14 +7,12 @@ export function BaseLayout(props: { children?: JSX.Element | JSX.Element[] }) {
                 <meta charset="utf-8" />
                 <meta name="viewport" content="width=device-width" />
                 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+                <script src="/htmx.min.js"></script>
                 {/* <link rel="stylesheet" href="/styles.css" /> */}
                 {/* <script type="module" src="/index.js"></script> */}
                 <title>Gift Shop</title>
             </head>
-            <body>
-                {props.children}
-            </body>
+            <body>{props.children}</body>
         </html>
-
-    )
+    );
 }

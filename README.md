@@ -81,6 +81,7 @@ bun i -D prettier
 #### elysia
 - Best Practices - MVC pattern: https://elysiajs.com/essential/best-practice.html
 - HTML and JSX: https://elysiajs.com/plugins/html
+- Static Files: https://elysiajs.com/plugins/static.html
 
 #### drizzle
 
