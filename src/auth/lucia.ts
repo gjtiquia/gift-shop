@@ -47,6 +47,55 @@ async function updateAuthSessionLastVerifiedAtInDatabase(
 
 // ---
 
+/*
+For an explanation on sessions: https://auth.pilcrowonpaper.com/sessions
+For an in-depth explanation on sessions: https://auth.pilcrowonpaper.com/auth-sessions
+Watch out for CSRF vulnerabilities: https://auth.pilcrowonpaper.com/csrf
+
+The auth session will be valid for 10 days.
+If the token is validated during that period, the expiration is extended.
+
+The session model with have 5 properties:
+- ID
+- User ID
+- Secret hash (binary data)
+- Token last verified at timestamp
+- Created at timestamp
+
+For, SQLite, your database may look like this:
+
+    CREATE TABLE user (
+        id TEXT NOT NULL PRIMARY KEY
+    ) STRICT;
+
+    CREATE TABLE auth_session (
+        id TEXT NOT NULL PRIMARY KEY,
+        user_id TEXT NOT NULL REFERENCES user(id),
+        secret_hash BLOB NOT NULL, -- blob is a SQLite data type for raw binary
+        token_last_verified_at INTEGER NOT NULL, -- unix time (seconds)
+        created_at INTEGER NOT NULL -- unix time (seconds)
+    ) STRICT;
+
+CSRF PROTECTION MUST BE IMPLEMENTED IF THE SESSION TOKEN IS STORED IN A COOKIE.
+Frameworks like SvelteKit and Astro have CSRF protection enabled by default.
+A simple method is to check the Sec-Fetch-Site request header on non-GET requests.
+
+	if (request.method !== "GET" && request.method !== "HEAD") {
+		const secFetchSiteHeader = request.headers.get("Sec-Fetch-Site");
+	    if (secFetchSiteHeader === null) {
+		    return new Response(null, { status: 403 });
+	    }
+	    if (secFetchSiteHeader !== "same-origin") {
+            return new Response(null, { status: 403 });
+	    }
+	}
+
+Uint8Array.toBase64() are supported on Node.js 25, the latest version of Deno, and the latest version of Deno.
+
+This file is licensed under the Zero-Clause BSD license (see ./LICENSE).
+You're free to use, copy, modify, and distribute it without any attribution.
+*/
+
 interface AuthSession {
     id: string;
     secretHash: Uint8Array;
