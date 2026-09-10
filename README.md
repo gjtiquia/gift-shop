@@ -110,7 +110,8 @@ notes
 - [x] admin inventory page
 - [x] shop catalogue page
 - [x] setup htmx so forms can use resource-oriented HTTP verbs
+- [x] setup tailwind
+- [ ] image uploading
 - [ ] shop cart page
 - [ ] orders page
-- [ ] setup tailwind
 - [ ] admin button in home page
