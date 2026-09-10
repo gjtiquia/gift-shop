@@ -7,10 +7,8 @@ import { join } from "node:path";
 
 const temporaryDirectory = mkdtempSync(join(tmpdir(), "gift-shop-auth-"));
 const databasePath = join(temporaryDirectory, "test.sqlite");
-const originalNodeEnvironment = process.env.NODE_ENV;
 process.env.DB_FILE_NAME = databasePath;
 process.env.ADMIN_PASSWORD = "correct-password";
-process.env.NODE_ENV = "development";
 
 const sqlite = new Database(databasePath);
 sqlite.exec(`
@@ -41,11 +39,6 @@ function postPassword(password: string, url = "http://localhost/auth/login") {
 }
 
 afterAll(() => {
-    if (originalNodeEnvironment === undefined) {
-        delete process.env.NODE_ENV;
-    } else {
-        process.env.NODE_ENV = originalNodeEnvironment;
-    }
     rmSync(temporaryDirectory, { recursive: true, force: true });
 });
 
@@ -113,22 +106,12 @@ test("a successful login creates a cookie-backed admin session", async () => {
     expect(loginPage.headers.get("location")).toBe("/admin");
 });
 
-test("session cookies are secure for HTTPS and production", async () => {
+test("session cookies are secure for HTTPS", async () => {
     const httpsResponse = await postPassword(
         "correct-password",
         "https://localhost/auth/login",
     );
     expect(httpsResponse.headers.get("set-cookie")).toContain("Secure");
-
-    process.env.NODE_ENV = "production";
-    try {
-        const productionResponse = await postPassword("correct-password");
-        expect(productionResponse.headers.get("set-cookie")).toContain(
-            "Secure",
-        );
-    } finally {
-        process.env.NODE_ENV = "development";
-    }
 });
 
 test("the admin page safely rejects missing and invalid cookies", async () => {

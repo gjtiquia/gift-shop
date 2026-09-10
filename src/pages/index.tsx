@@ -12,9 +12,10 @@ export const pages = new Elysia()
     .use(html())
     .get("/", () => <HomePage />)
     .get("/admin/login", async ({ cookie, query, redirect, request }) => {
+        const secure = new URL(request.url).protocol === "https:";
         const session = await validateAuthSessionCookie(
             cookie[authSessionCookieName],
-            request,
+            secure,
         );
         if (session) return redirect("/admin");
 
@@ -22,9 +23,10 @@ export const pages = new Elysia()
         return <AdminLoginPage error={error} />;
     })
     .get("/admin", async ({ cookie, redirect, request }) => {
+        const secure = new URL(request.url).protocol === "https:";
         const session = await validateAuthSessionCookie(
             cookie[authSessionCookieName],
-            request,
+            secure,
         );
         if (!session) return redirect("/admin/login");
 
