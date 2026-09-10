@@ -54,7 +54,7 @@ interface AuthSession {
     createdAt: Date;
 }
 
-const authSessionExpiresInSeconds = 60 * 60 * 24 * 10; // 10 days
+export const authSessionExpiresInSeconds = 60 * 60 * 24 * 10; // 10 days
 
 // Create a new session after the user signs in.
 // Store the session token in a cookie with the following attributes:

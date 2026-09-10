@@ -1,18 +1,23 @@
 import { html, Html } from "@elysia/html";
 import { BaseLayout } from "./layouts/BaseLayout";
 
-export async function AdminLoginPage() {
+interface AdminLoginPageProps {
+    error?: string;
+}
 
-    // TODO : on submit, sends to backend
-    // TODO : if password correct, backend creates a session, and saves in a cookie, and redirects to admin page
-    // TODO : if password incorrect, should reload with an red text
-
+export async function AdminLoginPage({ error }: AdminLoginPageProps = {}) {
     return (
         <BaseLayout>
             <h1>Gift Shop - Admin Login Page</h1>
-            <form>
-                <input type="password" />
-                <button>Submit</button>
+            {error ? <p style="color: red;">{error}</p> : <></>}
+            <form method="post" action="/auth/login">
+                <input
+                    type="password"
+                    name="password"
+                    autocomplete="current-password"
+                    required
+                />
+                <button type="submit">Submit</button>
             </form>
         </BaseLayout>
     );

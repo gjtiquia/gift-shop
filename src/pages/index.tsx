@@ -3,15 +3,30 @@ import { HomePage } from "./HomePage";
 import { html, Html } from "@elysia/html";
 import { AdminLoginPage } from "./AdminLoginPage";
 import { AdminPage } from "./AdminPage";
+import {
+    authSessionCookieName,
+    validateAuthSessionCookie,
+} from "../auth/sessionCookie";
 
 export const pages = new Elysia()
     .use(html())
     .get("/", () => <HomePage />)
-    .get("/admin/login", () => {
-        // TODO : if already logged in, redirect to admin page
-        return <AdminLoginPage />;
+    .get("/admin/login", async ({ cookie, query, redirect, request }) => {
+        const session = await validateAuthSessionCookie(
+            cookie[authSessionCookieName],
+            request,
+        );
+        if (session) return redirect("/admin");
+
+        const error = query.error === "1" ? "Incorrect password." : undefined;
+        return <AdminLoginPage error={error} />;
     })
-    .get("/admin", () => {
-        // TODO : if not logged in, redirect to login page
+    .get("/admin", async ({ cookie, redirect, request }) => {
+        const session = await validateAuthSessionCookie(
+            cookie[authSessionCookieName],
+            request,
+        );
+        if (!session) return redirect("/admin/login");
+
         return <AdminPage />;
     });

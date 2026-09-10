@@ -101,6 +101,7 @@ notes
 
 ## todos
 
+- [ ] startup test if schema is valid
 - [ ] setup tailwind
 - [ ] admin button in home page
 - [ ] admin login page
