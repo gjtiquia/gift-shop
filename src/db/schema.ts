@@ -1,4 +1,3 @@
-import { boolean } from "drizzle-orm/cockroach-core/columns/bool";
 import { blob, int, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 // ref: https://github.com/lucia-auth/lucia/blob/main/code/auth_session.ts

@@ -1,35 +1,12 @@
 import { afterAll, expect, test } from "bun:test";
 import { Database } from "bun:sqlite";
 import { Elysia } from "elysia";
-import { mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { createTemporaryDatabase } from "../test/database";
 
-const temporaryDirectory = mkdtempSync(join(tmpdir(), "gift-shop-auth-"));
-const databasePath = join(temporaryDirectory, "test.sqlite");
+const temporaryDatabase = createTemporaryDatabase("gift-shop-auth-");
+const databasePath = temporaryDatabase.databasePath;
 process.env.DB_FILE_NAME = databasePath;
 process.env.ADMIN_PASSWORD = "correct-password";
-
-const sqlite = new Database(databasePath);
-sqlite.exec(`
-    CREATE TABLE auth_sessions_table (
-        id TEXT PRIMARY KEY NOT NULL,
-        secretHash BLOB NOT NULL,
-        createdAt INTEGER NOT NULL,
-        lastVerifiedAt INTEGER NOT NULL
-    );
-    CREATE TABLE inventory_table (
-        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-        name TEXT NOT NULL,
-        priceCentsX10 INTEGER NOT NULL,
-        quantity INTEGER NOT NULL,
-        createdAt INTEGER NOT NULL,
-        lastModifiedAt INTEGER NOT NULL,
-        imageId INTEGER,
-        adminNotes TEXT
-    )
-`);
-sqlite.close();
 
 const { createAuthSession, validateAuthSessionToken } = await import("./lucia");
 const { auth } = await import("./index");
@@ -76,7 +53,7 @@ function getSessionLastVerifiedAt(authSessionToken: string) {
 }
 
 afterAll(() => {
-    rmSync(temporaryDirectory, { recursive: true, force: true });
+    temporaryDatabase.cleanup();
 });
 
 test("a newly created auth session can be validated", async () => {
