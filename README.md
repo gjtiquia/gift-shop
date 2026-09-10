@@ -104,12 +104,12 @@ notes
 
 ## todos
 
-- [ ] startup test if schema is valid
-- [ ] setup tailwind
+- [x] startup test if schema is valid
+- [x] admin login page
+- [x] admin inventory page
+- [x] shop catalogue page
 - [ ] setup htmx so forms can do more than POST
-- [ ] admin button in home page
-- [ ] admin login page
-- [ ] admin inventory page
-- [ ] shop catalogue page
 - [ ] shop cart page
 - [ ] orders page
+- [ ] setup tailwind
+- [ ] admin button in home page
