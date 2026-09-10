@@ -103,6 +103,7 @@ notes
 
 - [ ] startup test if schema is valid
 - [ ] setup tailwind
+- [ ] setup htmx so forms can do more than POST
 - [ ] admin button in home page
 - [ ] admin login page
 - [ ] admin inventory page
