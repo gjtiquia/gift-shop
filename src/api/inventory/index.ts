@@ -6,12 +6,13 @@ import {
     validateAuthSessionCookie,
 } from "../../auth/sessionCookie";
 import { db, inventoryTable } from "../../db";
+import { InventoryRow } from "../../pages/components/InventoryRow";
 import { parsePrice } from "../../utils";
 
 export const inventory = new Elysia({ prefix: "inventory" })
     .post(
         "/",
-        async ({ body, cookie, redirect, request }) => {
+        async ({ body, cookie, redirect, request, set }) => {
             const rejection = await rejectInvalidMutation(
                 request,
                 cookie[authSessionCookieName],
@@ -19,20 +20,26 @@ export const inventory = new Elysia({ prefix: "inventory" })
             if (rejection) return rejection;
 
             const values = parseInventoryForm(body);
-            if (!values) return redirect("/admin?error=invalid-input", 303);
+            if (!values) return invalidInventoryResponse(request);
 
             const now = new Date();
-            await db.insert(inventoryTable).values({
-                ...values,
-                createdAt: now,
-                lastModifiedAt: now,
-            });
+            const [item] = await db
+                .insert(inventoryTable)
+                .values({
+                    ...values,
+                    createdAt: now,
+                    lastModifiedAt: now,
+                })
+                .returning();
 
-            return redirect("/admin", 303);
+            if (!isHtmxRequest(request)) return redirect("/admin", 303);
+
+            set.status = 201;
+            return InventoryRow({ item });
         },
         { body: inventoryForm() },
     )
-    .post(
+    .put(
         "/:id",
         async ({ body, cookie, params, redirect, request }) => {
             const rejection = await rejectInvalidMutation(
@@ -44,19 +51,23 @@ export const inventory = new Elysia({ prefix: "inventory" })
             const id = parseInventoryId(params.id);
             const values = parseInventoryForm(body);
             if (id === null || !values) {
-                return redirect("/admin?error=invalid-input", 303);
+                return invalidInventoryResponse(request);
             }
 
-            await db
+            const [item] = await db
                 .update(inventoryTable)
                 .set({ ...values, lastModifiedAt: new Date() })
-                .where(eq(inventoryTable.id, id));
+                .where(eq(inventoryTable.id, id))
+                .returning();
 
-            return redirect("/admin", 303);
+            if (!item) return inventoryNotFoundResponse();
+            if (!isHtmxRequest(request)) return redirect("/admin", 303);
+
+            return InventoryRow({ item });
         },
         { body: inventoryForm() },
     )
-    .post("/:id/delete", async ({ cookie, params, redirect, request }) => {
+    .delete("/:id", async ({ cookie, params, redirect, request }) => {
         const rejection = await rejectInvalidMutation(
             request,
             cookie[authSessionCookieName],
@@ -64,12 +75,17 @@ export const inventory = new Elysia({ prefix: "inventory" })
         if (rejection) return rejection;
 
         const id = parseInventoryId(params.id);
-        if (id === null) {
-            return redirect("/admin?error=invalid-input", 303);
-        }
+        if (id === null) return invalidInventoryResponse(request);
 
-        await db.delete(inventoryTable).where(eq(inventoryTable.id, id));
-        return redirect("/admin", 303);
+        const [deleted] = await db
+            .delete(inventoryTable)
+            .where(eq(inventoryTable.id, id))
+            .returning({ id: inventoryTable.id });
+
+        if (!deleted) return inventoryNotFoundResponse();
+        if (!isHtmxRequest(request)) return redirect("/admin", 303);
+
+        return new Response(null, { status: 200 });
     });
 
 async function rejectInvalidMutation(
@@ -82,6 +98,13 @@ async function rejectInvalidMutation(
 
     const session = await validateAuthSessionCookie(authCookie, request);
     if (!session) {
+        if (isHtmxRequest(request)) {
+            return new Response(null, {
+                status: 401,
+                headers: { "HX-Redirect": "/admin/login" },
+            });
+        }
+
         return new Response(null, {
             status: 303,
             headers: { location: "/admin/login" },
@@ -89,6 +112,39 @@ async function rejectInvalidMutation(
     }
 
     return null;
+}
+
+function invalidInventoryResponse(request: Request) {
+    if (!isHtmxRequest(request)) {
+        return new Response(null, {
+            status: 303,
+            headers: { location: "/admin?error=invalid-input" },
+        });
+    }
+
+    return new Response("Invalid inventory values.", {
+        status: 422,
+        headers: {
+            "content-type": "text/html; charset=utf-8",
+            "HX-Retarget": "#inventory-error",
+            "HX-Reswap": "innerHTML",
+        },
+    });
+}
+
+function inventoryNotFoundResponse() {
+    return new Response("Inventory item not found.", {
+        status: 404,
+        headers: {
+            "content-type": "text/html; charset=utf-8",
+            "HX-Retarget": "#inventory-error",
+            "HX-Reswap": "innerHTML",
+        },
+    });
+}
+
+function isHtmxRequest(request: Request) {
+    return request.headers.get("HX-Request") === "true";
 }
 
 function parseInventoryForm(body: {

@@ -241,17 +241,18 @@ test("inventory mutations require auth and same-origin CSRF metadata", async () 
     expect(crossSiteResponse.status).toBe(403);
 
     const invalidIdResponse = await app.handle(
-        new Request("http://localhost/api/inventory/not-an-id/delete", {
-            method: "POST",
+        new Request("http://localhost/api/inventory/not-an-id", {
+            method: "DELETE",
             headers: {
                 "Sec-Fetch-Site": "same-origin",
+                "HX-Request": "true",
                 cookie,
             },
         }),
     );
-    expect(invalidIdResponse.status).toBe(303);
-    expect(invalidIdResponse.headers.get("location")).toBe(
-        "/admin?error=invalid-input",
+    expect(invalidIdResponse.status).toBe(422);
+    expect(invalidIdResponse.headers.get("HX-Retarget")).toBe(
+        "#inventory-error",
     );
 });
 
@@ -263,6 +264,7 @@ test("an admin can create, update, and delete inventory", async () => {
     const headers = {
         "content-type": "application/x-www-form-urlencoded",
         "Sec-Fetch-Site": "same-origin",
+        "HX-Request": "true",
         cookie,
     };
     const createResponse = await app.handle(
@@ -277,8 +279,8 @@ test("an admin can create, update, and delete inventory", async () => {
             }),
         }),
     );
-    expect(createResponse.status).toBe(303);
-    expect(createResponse.headers.get("location")).toBe("/admin");
+    expect(createResponse.status).toBe(201);
+    expect(await createResponse.text()).toContain("Test gift");
 
     const database = new Database(databasePath);
     const created = database
@@ -305,7 +307,7 @@ test("an admin can create, update, and delete inventory", async () => {
 
     const updateResponse = await app.handle(
         new Request(`http://localhost/api/inventory/${created.id}`, {
-            method: "POST",
+            method: "PUT",
             headers,
             body: new URLSearchParams({
                 name: "Updated gift",
@@ -315,8 +317,8 @@ test("an admin can create, update, and delete inventory", async () => {
             }),
         }),
     );
-    expect(updateResponse.status).toBe(303);
-    expect(updateResponse.headers.get("location")).toBe("/admin");
+    expect(updateResponse.status).toBe(200);
+    expect(await updateResponse.text()).toContain("Updated gift");
     expect(
         database
             .query<
@@ -340,7 +342,7 @@ test("an admin can create, update, and delete inventory", async () => {
 
     const invalidResponse = await app.handle(
         new Request(`http://localhost/api/inventory/${created.id}`, {
-            method: "POST",
+            method: "PUT",
             headers,
             body: new URLSearchParams({
                 name: "Invalid gift",
@@ -349,10 +351,8 @@ test("an admin can create, update, and delete inventory", async () => {
             }),
         }),
     );
-    expect(invalidResponse.status).toBe(303);
-    expect(invalidResponse.headers.get("location")).toBe(
-        "/admin?error=invalid-input",
-    );
+    expect(invalidResponse.status).toBe(422);
+    expect(invalidResponse.headers.get("HX-Retarget")).toBe("#inventory-error");
 
     const catalogueResponse = await app.handle(
         new Request("http://localhost/"),
@@ -366,16 +366,17 @@ test("an admin can create, update, and delete inventory", async () => {
         new Request("http://localhost/admin", { headers: { cookie } }),
     );
     const adminHtml = await adminResponse.text();
-    expect(adminHtml).toContain(`/api/inventory/${created.id}`);
+    expect(adminHtml).toContain(`hx-put="/api/inventory/${created.id}"`);
+    expect(adminHtml).toContain(`hx-delete="/api/inventory/${created.id}"`);
     expect(adminHtml).toContain("Delete this item?");
 
     const deleteResponse = await app.handle(
-        new Request(`http://localhost/api/inventory/${created.id}/delete`, {
-            method: "POST",
+        new Request(`http://localhost/api/inventory/${created.id}`, {
+            method: "DELETE",
             headers,
         }),
     );
-    expect(deleteResponse.status).toBe(303);
+    expect(deleteResponse.status).toBe(200);
     expect(
         database
             .query<{ count: number }, []>(

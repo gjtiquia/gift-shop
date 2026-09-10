@@ -14,6 +14,8 @@ export const pages = new Elysia()
         staticPlugin({
             assets: "src/pages/public",
             prefix: "/",
+            alwaysStatic: true,
+            indexHTML: false,
         }),
     )
     .use(html())

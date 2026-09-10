@@ -12,7 +12,12 @@ export function BaseLayout(props: { children?: JSX.Element | JSX.Element[] }) {
                 {/* <script type="module" src="/index.js"></script> */}
                 <title>Gift Shop</title>
             </head>
-            <body>{props.children}</body>
+            <body
+                hx-on--after-request="if (event.detail.successful) document.querySelector('#inventory-error')?.replaceChildren()"
+                hx-on--response-error="document.querySelector('#inventory-error')?.replaceChildren(event.detail.xhr.responseText)"
+            >
+                {props.children}
+            </body>
         </html>
     );
 }

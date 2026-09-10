@@ -109,7 +109,7 @@ notes
 - [x] admin login page
 - [x] admin inventory page
 - [x] shop catalogue page
-- [ ] setup htmx so forms can do more than POST
+- [x] setup htmx so forms can use resource-oriented HTTP verbs
 - [ ] shop cart page
 - [ ] orders page
 - [ ] setup tailwind
