@@ -36,7 +36,9 @@ async function getAuthSessionFromDatabase(
     };
 }
 
-async function updateAuthSessionInDatabase(authSession: AuthSession) {
+async function updateAuthSessionLastVerifiedAtInDatabase(
+    authSession: AuthSession,
+) {
     await db
         .update(authSessionsTable)
         .set({ lastVerifiedAt: authSession.tokenLastVerifiedAt })
@@ -164,7 +166,7 @@ export async function validateAuthSessionToken(
         authSession.tokenLastVerifiedAt = now;
 
         // Replace this with your own database query.
-        await updateAuthSessionInDatabase(authSession);
+        await updateAuthSessionLastVerifiedAtInDatabase(authSession);
     }
 
     return authSession;
