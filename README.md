@@ -99,6 +99,9 @@ notes
 - at the same time, we dont have "users", just a single "admin"
 - so we can reference the implementation and create a super simplified version of it
 
+## codes conventions
+- function ordering, as pragmatic as possible, order from high level to low level functions, so it reads nicely
+
 ## todos
 
 - [ ] startup test if schema is valid
