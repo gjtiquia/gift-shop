@@ -1,4 +1,5 @@
 import { expect, test } from "bun:test";
+import { Database } from "bun:sqlite";
 import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -60,9 +61,25 @@ test("database startup rejects a nonexistent database without creating it", () =
         const result = runDatabaseModule(databasePath);
 
         expect(result.success).toBe(false);
-        expect(result.output).toContain("does not exist or cannot be opened");
+        expect(result.output).toContain("Database does not exist");
         expect(result.output).toContain("bun run db:push");
         expect(existsSync(databasePath)).toBe(false);
+    } finally {
+        rmSync(directory, { recursive: true, force: true });
+    }
+});
+
+test("database startup rejects an out-of-sync schema", () => {
+    const directory = mkdtempSync(join(tmpdir(), "gift-shop-db-schema-"));
+    const databasePath = join(directory, "empty.sqlite");
+    new Database(databasePath).close();
+
+    try {
+        const result = runDatabaseModule(databasePath);
+
+        expect(result.success).toBe(false);
+        expect(result.output).toContain("Database schema is out of sync");
+        expect(result.output).toContain("bun run db:push");
     } finally {
         rmSync(directory, { recursive: true, force: true });
     }

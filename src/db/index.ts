@@ -1,26 +1,30 @@
 import "dotenv/config";
-import { Database } from "bun:sqlite";
+import { fileURLToPath } from "node:url";
+import { push } from "drizzle-kit/cli";
 import { drizzle } from "drizzle-orm/bun-sqlite";
 
 const databaseFileName = process.env.DB_FILE_NAME;
-const databaseSetupGuidance = "Run `bun run db:push` first.";
 
 if (!databaseFileName?.trim()) {
-    throw new Error("DB_FILE_NAME must be set to a non-blank database path.");
+    throw new Error("DB_FILE_NAME must be set.");
 }
 
-let sqlite: Database;
-try {
-    sqlite = new Database(databaseFileName, {
-        readwrite: true,
-        create: false,
-    });
-} catch (cause) {
+if (!(await Bun.file(databaseFileName).exists())) {
+    throw new Error("Database does not exist. Run `bun run db:push` first.");
+}
+
+const schemaValidation = await push({
+    dialect: "sqlite",
+    schema: fileURLToPath(new URL("./schema.ts", import.meta.url)),
+    url: databaseFileName,
+    explain: true,
+});
+
+if (schemaValidation.status !== "no_changes") {
     throw new Error(
-        `Database at DB_FILE_NAME does not exist or cannot be opened. ${databaseSetupGuidance}`,
-        { cause },
+        "Database schema is out of sync. Run `bun run db:push` first.",
     );
 }
 
-export const db = drizzle({ client: sqlite });
+export const db = drizzle(databaseFileName);
 export * from "./schema";
