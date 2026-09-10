@@ -23,7 +23,7 @@ export const pages = new Elysia()
         const error = query.error === "1" ? "Incorrect password." : undefined;
         return <AdminLoginPage error={error} />;
     })
-    .get("/admin", async ({ cookie, redirect, request }) => {
+    .get("/admin", async ({ cookie, query, redirect, request }) => {
         const secure = isSecureRequest(request);
         const session = await validateAuthSessionCookie(
             cookie[authSessionCookieName],
@@ -31,5 +31,9 @@ export const pages = new Elysia()
         );
         if (!session) return redirect("/admin/login");
 
-        return <AdminPage />;
+        const error =
+            query.error === "invalid-input"
+                ? "Invalid inventory values."
+                : undefined;
+        return <AdminPage error={error} />;
     });

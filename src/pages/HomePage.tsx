@@ -1,18 +1,18 @@
 import { html, Html } from "@elysia/html";
+import { asc } from "drizzle-orm";
+import { db, inventoryTable } from "../db";
+import { formatPrice } from "../inventory";
 import { BaseLayout } from "./layouts/BaseLayout";
-import { db, imagesTable, inventoryTable } from "../db";
-import { eq } from "drizzle-orm";
 
 export async function HomePage() {
-    // TODO : refactor into inventory service
     const items = await db
         .select({
-            imageFilename: imagesTable.filename,
             name: inventoryTable.name,
             priceCentsX10: inventoryTable.priceCentsX10,
+            quantity: inventoryTable.quantity,
         })
         .from(inventoryTable)
-        .leftJoin(imagesTable, eq(inventoryTable.imageId, imagesTable.id));
+        .orderBy(asc(inventoryTable.id));
 
     return (
         <BaseLayout>
@@ -20,17 +20,21 @@ export async function HomePage() {
             <table>
                 <thead>
                     <tr>
-                        <th scope="col">Image</th>
                         <th scope="col">Name</th>
                         <th scope="col">Price</th>
+                        <th scope="col">Availability</th>
                     </tr>
                 </thead>
                 <tbody>
                     {items.map((item) => (
                         <tr>
-                            <th>{item.imageFilename}</th>
-                            <th>{item.name}</th>
-                            <th>{item.priceCentsX10 / 10}</th>
+                            <td>{item.name}</td>
+                            <td>{formatPrice(item.priceCentsX10)}</td>
+                            <td>
+                                {item.quantity === 0
+                                    ? "Out of stock"
+                                    : `${item.quantity} in stock`}
+                            </td>
                         </tr>
                     ))}
                 </tbody>
