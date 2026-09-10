@@ -14,7 +14,10 @@ export function BaseLayout(props: { children?: JSX.Element | JSX.Element[] }) {
                     href="/public/favicon.svg"
                 />
                 <script src="/public/htmx.min.js"></script>
-                {/* <link rel="stylesheet" href="/public/styles.css" /> */}
+                <link
+                    rel="stylesheet"
+                    href={`/public/styles.css?v=${version}`}
+                />
                 <script
                     type="module"
                     src={`/public/index.js?v=${version}`}

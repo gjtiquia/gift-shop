@@ -3,10 +3,12 @@
     "version": "1.0.50",
     "scripts": {
         "start": "bun run build && bun run src/index.tsx",
-        "dev": "concurrently 'bun run dev:server' 'bun run dev:scripts'",
+        "dev": "concurrently 'bun run dev:server' 'bun run dev:tailwind' 'bun run dev:scripts'",
         "dev:server": "bun run --watch src/index.tsx",
+        "dev:tailwind": "tailwindcss -i ./src/pages/input.css -o ./src/pages/public/styles.css --watch",
         "dev:scripts": "bun build ./src/pages/scripts/index.ts --outdir ./src/pages/public/ --watch",
-        "build": "bun run build:scripts",
+        "build": "bun run build:tailwind && bun run build:scripts",
+        "build:tailwind": "tailwindcss -i ./src/pages/input.css -o ./src/pages/public/styles.css",
         "build:scripts": "bun build ./src/pages/scripts/index.ts --outdir ./src/pages/public/",
         "db:push": "drizzle-kit push"
     },
@@ -19,10 +21,12 @@
         "elysia": "latest"
     },
     "devDependencies": {
+        "@tailwindcss/cli": "^4.3.3",
         "@types/bun": "^1.4.2",
         "bun-types": "latest",
         "concurrently": "^10.0.4",
-        "prettier": "^3.9.6"
+        "prettier": "^3.9.6",
+        "tailwindcss": "^4.3.3"
     },
     "module": "src/index.js"
 }
