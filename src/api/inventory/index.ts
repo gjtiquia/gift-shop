@@ -1,13 +1,12 @@
 import { Elysia, t } from "elysia";
 import { eq } from "drizzle-orm";
-import { isValidCsrfRequest } from "../auth/csrf";
+import { isValidCsrfRequest } from "../../auth/csrf";
 import {
     authSessionCookieName,
-    isSecureRequest,
     validateAuthSessionCookie,
-} from "../auth/sessionCookie";
-import { db, inventoryTable } from "../db";
-import { parsePrice } from "../inventory";
+} from "../../auth/sessionCookie";
+import { db, inventoryTable } from "../../db";
+import { parsePrice } from "../../utils";
 
 const inventoryForm = t.Object({
     name: t.Optional(t.String()),
@@ -58,10 +57,7 @@ async function rejectInvalidMutation(
         return new Response(null, { status: 403 });
     }
 
-    const session = await validateAuthSessionCookie(
-        authCookie,
-        isSecureRequest(request),
-    );
+    const session = await validateAuthSessionCookie(authCookie, request);
     if (!session) {
         return new Response(null, {
             status: 303,
@@ -72,9 +68,9 @@ async function rejectInvalidMutation(
     return null;
 }
 
-export const inventoryApi = new Elysia()
+export const inventory = new Elysia({ prefix: "inventory" })
     .post(
-        "/api/inventory",
+        "/",
         async ({ body, cookie, redirect, request }) => {
             const rejection = await rejectInvalidMutation(
                 request,
@@ -97,7 +93,7 @@ export const inventoryApi = new Elysia()
         { body: inventoryForm },
     )
     .post(
-        "/api/inventory/:id",
+        "/:id",
         async ({ body, cookie, params, redirect, request }) => {
             const rejection = await rejectInvalidMutation(
                 request,
@@ -120,21 +116,18 @@ export const inventoryApi = new Elysia()
         },
         { body: inventoryForm },
     )
-    .post(
-        "/api/inventory/:id/delete",
-        async ({ cookie, params, redirect, request }) => {
-            const rejection = await rejectInvalidMutation(
-                request,
-                cookie[authSessionCookieName],
-            );
-            if (rejection) return rejection;
+    .post("/:id/delete", async ({ cookie, params, redirect, request }) => {
+        const rejection = await rejectInvalidMutation(
+            request,
+            cookie[authSessionCookieName],
+        );
+        if (rejection) return rejection;
 
-            const id = parseInventoryId(params.id);
-            if (id === null) {
-                return redirect("/admin?error=invalid-input", 303);
-            }
+        const id = parseInventoryId(params.id);
+        if (id === null) {
+            return redirect("/admin?error=invalid-input", 303);
+        }
 
-            await db.delete(inventoryTable).where(eq(inventoryTable.id, id));
-            return redirect("/admin", 303);
-        },
-    );
+        await db.delete(inventoryTable).where(eq(inventoryTable.id, id));
+        return redirect("/admin", 303);
+    });

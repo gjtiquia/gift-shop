@@ -1,7 +1,7 @@
 import { afterAll, expect, test } from "bun:test";
 import { Database } from "bun:sqlite";
 import { Elysia } from "elysia";
-import { createTemporaryDatabase } from "../test/database";
+import { createTemporaryDatabase } from "../test/tempDbForTests";
 
 const temporaryDatabase = createTemporaryDatabase("gift-shop-auth-");
 const databasePath = temporaryDatabase.databasePath;
@@ -10,9 +10,9 @@ process.env.ADMIN_PASSWORD = "correct-password";
 
 const { createAuthSession, validateAuthSessionToken } = await import("./lucia");
 const { auth } = await import("./index");
-const { inventoryApi } = await import("../api/inventory");
+const { api } = await import("../api");
 const { pages } = await import("../pages");
-const app = new Elysia().use(pages).use(auth).use(inventoryApi);
+const app = new Elysia().use(pages).use(auth).use(api);
 
 function postPassword(
     password: string,

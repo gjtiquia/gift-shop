@@ -1,11 +1,7 @@
 import { Elysia, t } from "elysia";
 import { isValidCsrfRequest } from "./csrf";
 import { createAuthSession } from "./lucia";
-import {
-    authSessionCookieName,
-    isSecureRequest,
-    setAuthSessionCookie,
-} from "./sessionCookie";
+import { authSessionCookieName, setAuthSessionCookie } from "./sessionCookie";
 
 export const auth = new Elysia({ prefix: "auth" }).post(
     "/login",
@@ -20,11 +16,10 @@ export const auth = new Elysia({ prefix: "auth" }).post(
         }
 
         const { authSessionToken } = await createAuthSession("admin");
-        const secure = isSecureRequest(request);
         setAuthSessionCookie(
             cookie[authSessionCookieName],
             authSessionToken,
-            secure,
+            request,
         );
 
         return redirect("/admin", 303);

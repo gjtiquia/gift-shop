@@ -3,28 +3,28 @@ import { authSessionExpiresInSeconds, validateAuthSessionToken } from "./lucia";
 
 export const authSessionCookieName = "auth_session";
 
-export function isSecureRequest(request: Request) {
+function isSecureRequest(request: Request) {
     return new URL(request.url).protocol === "https:";
 }
 
 export function setAuthSessionCookie(
     cookie: Cookie<unknown>,
     authSessionToken: string,
-    secure: boolean,
+    request: Request,
 ) {
     cookie.set({
         value: authSessionToken,
         httpOnly: true,
         sameSite: "lax",
         path: "/",
-        secure,
+        secure: isSecureRequest(request),
         maxAge: authSessionExpiresInSeconds,
     });
 }
 
 export async function validateAuthSessionCookie(
     cookie: Cookie<unknown>,
-    secure: boolean,
+    request: Request,
 ) {
     const cookieValue = cookie.value;
     if (typeof cookieValue !== "string" || cookieValue.length === 0) {
@@ -33,7 +33,7 @@ export async function validateAuthSessionCookie(
 
     try {
         const session = await validateAuthSessionToken(cookieValue);
-        if (session) setAuthSessionCookie(cookie, cookieValue, secure);
+        if (session) setAuthSessionCookie(cookie, cookieValue, request);
         return session;
     } catch {
         return null;

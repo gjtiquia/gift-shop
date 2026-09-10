@@ -1,7 +1,7 @@
 import { html, Html } from "@elysia/html";
 import { asc } from "drizzle-orm";
 import { db, inventoryTable } from "../db";
-import { formatPrice } from "../inventory";
+import { formatPrice } from "../utils";
 import { BaseLayout } from "./layouts/BaseLayout";
 
 interface AdminPageProps {
