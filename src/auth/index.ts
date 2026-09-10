@@ -1,6 +1,10 @@
 import { Elysia, t } from "elysia";
 import { createAuthSession } from "./lucia";
-import { authSessionCookieName, setAuthSessionCookie } from "./sessionCookie";
+import {
+    authSessionCookieName,
+    isSecureRequest,
+    setAuthSessionCookie,
+} from "./sessionCookie";
 
 export const auth = new Elysia({ prefix: "auth" }).post(
     "/login",
@@ -11,7 +15,7 @@ export const auth = new Elysia({ prefix: "auth" }).post(
         }
 
         const { authSessionToken } = await createAuthSession("admin");
-        const secure = new URL(request.url).protocol === "https:";
+        const secure = isSecureRequest(request);
         setAuthSessionCookie(
             cookie[authSessionCookieName],
             authSessionToken,

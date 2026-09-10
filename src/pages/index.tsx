@@ -5,6 +5,7 @@ import { AdminLoginPage } from "./AdminLoginPage";
 import { AdminPage } from "./AdminPage";
 import {
     authSessionCookieName,
+    isSecureRequest,
     validateAuthSessionCookie,
 } from "../auth/sessionCookie";
 
@@ -12,7 +13,7 @@ export const pages = new Elysia()
     .use(html())
     .get("/", () => <HomePage />)
     .get("/admin/login", async ({ cookie, query, redirect, request }) => {
-        const secure = new URL(request.url).protocol === "https:";
+        const secure = isSecureRequest(request);
         const session = await validateAuthSessionCookie(
             cookie[authSessionCookieName],
             secure,
@@ -23,7 +24,7 @@ export const pages = new Elysia()
         return <AdminLoginPage error={error} />;
     })
     .get("/admin", async ({ cookie, redirect, request }) => {
-        const secure = new URL(request.url).protocol === "https:";
+        const secure = isSecureRequest(request);
         const session = await validateAuthSessionCookie(
             cookie[authSessionCookieName],
             secure,

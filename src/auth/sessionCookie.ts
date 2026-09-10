@@ -3,6 +3,10 @@ import { authSessionExpiresInSeconds, validateAuthSessionToken } from "./lucia";
 
 export const authSessionCookieName = "auth_session";
 
+export function isSecureRequest(request: Request) {
+    return new URL(request.url).protocol === "https:";
+}
+
 export function setAuthSessionCookie(
     cookie: Cookie<unknown>,
     authSessionToken: string,
