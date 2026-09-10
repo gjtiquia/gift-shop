@@ -6,10 +6,14 @@ export function BaseLayout(props: { children?: JSX.Element | JSX.Element[] }) {
             <head>
                 <meta charset="utf-8" />
                 <meta name="viewport" content="width=device-width" />
-                <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-                <script src="/htmx.min.js"></script>
-                {/* <link rel="stylesheet" href="/styles.css" /> */}
-                {/* <script type="module" src="/index.js"></script> */}
+                <link
+                    rel="icon"
+                    type="image/svg+xml"
+                    href="/public/favicon.svg"
+                />
+                <script src="/public/htmx.min.js"></script>
+                {/* <link rel="stylesheet" href="/public/styles.css" /> */}
+                {/* <script type="module" src="/public/index.js"></script> */}
                 <title>Gift Shop</title>
             </head>
             <body

@@ -13,7 +13,7 @@ export const pages = new Elysia()
     .use(
         staticPlugin({
             assets: "src/pages/public",
-            prefix: "/",
+            prefix: "/public",
             alwaysStatic: true,
             indexHTML: false,
         }),
