@@ -85,7 +85,7 @@ test("database startup rejects an out-of-sync schema", () => {
     }
 });
 
-test("database startup accepts an initialized database", () => {
+test("database startup accepts an in-sync schema", () => {
     const temporaryDatabase = createTemporaryDatabase("gift-shop-db-valid-");
 
     try {
