@@ -25,6 +25,9 @@ bun run start
 # dev server at port 3000
 bun run dev
 
+# run all tests
+bun test
+
 # push schema to db.sqlite
 bun run db:push
 ```
