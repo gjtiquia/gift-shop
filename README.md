@@ -39,6 +39,8 @@ production
 - [elysia](https://elysiajs.com/)
 - [drizzle with SQLite via Bun SQL](https://orm.drizzle.team/)
 - [simplified handrolled version of lucia auth](https://lucia-auth.com/)
+- [htmx 4](https://four.htmx.org/)
+- [tailwindcss](https://tailwindcss.com/)
 
 DX
 - formatter: [prettier](https://prettier.io/)
@@ -75,6 +77,16 @@ bun i -D prettier
 
 # create .prettierrc
 ```
+
+#### htmx
+
+- downloaded file from https://cdn.jsdelivr.net/npm/htmx.org@4.0.0/dist/htmx.min.js
+- served under /public via elysia's static file plugin
+
+#### tailwind
+
+- uses tailwind CLI to generate the css
+- output served via /public/styles.css
 
 ### docs and notes
 
