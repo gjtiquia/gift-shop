@@ -131,6 +131,9 @@ notes
 - at the same time, we dont have "users", just a single "admin"
 - so we can reference the implementation and create a super simplified version of it
 
+#### frontend javascript
+- we bundle it using Bun (see `package.json` and `/src/pages/scripts/index.ts`)
+
 ## code conventions
 
 ### general
