@@ -1,1 +1,9 @@
 @import "tailwindcss";
+
+@layer components {
+    [data-inventory-field]:read-only {
+        border-color: transparent;
+        background: transparent;
+        padding-inline: 0;
+    }
+}

@@ -79,13 +79,22 @@ export async function AdminPage({ error }: AdminPageProps = {}) {
                             Notes
                             <input class={inputClasses} name="adminNotes" />
                         </label>
-                        <label class="grid gap-1 text-sm font-medium text-gray-800 sm:col-span-2 lg:col-span-5">
+                        <label class="grid gap-2 text-sm font-medium text-gray-800 sm:col-span-2 lg:col-span-5">
                             Take photo or choose image (optional)
                             <input
                                 class="block w-full text-sm file:mr-3 file:rounded-md file:border-0 file:bg-gray-200 file:px-3 file:py-2 file:font-medium"
                                 type="file"
                                 name="image"
                                 accept="image/jpeg,image/png,image/webp"
+                                data-image-preview="new-inventory-image-preview"
+                            />
+                            <img
+                                id="new-inventory-image-preview"
+                                class="aspect-4/3 w-40 rounded-md bg-gray-100 object-cover"
+                                width="160"
+                                height="120"
+                                alt="Selected inventory image preview"
+                                hidden
                             />
                         </label>
                         <button
@@ -97,10 +106,37 @@ export async function AdminPage({ error }: AdminPageProps = {}) {
                     </form>
                 </section>
 
-                <section class="grid gap-4">
-                    <h2 class="text-xl font-semibold text-gray-950">
-                        Inventory
-                    </h2>
+                <section id="inventory-section" class="grid gap-4">
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <h2 class="text-xl font-semibold text-gray-950">
+                            Inventory
+                        </h2>
+                        <div class="flex flex-wrap gap-2">
+                            <button
+                                id="inventory-edit"
+                                class="rounded-md bg-gray-950 px-4 py-2 font-medium text-white"
+                                type="button"
+                            >
+                                Edit
+                            </button>
+                            <button
+                                id="inventory-save"
+                                class="rounded-md bg-gray-950 px-4 py-2 font-medium text-white"
+                                type="button"
+                                hidden
+                            >
+                                Save changes
+                            </button>
+                            <button
+                                id="inventory-discard"
+                                class="rounded-md border border-gray-300 px-4 py-2 font-medium text-gray-800"
+                                type="button"
+                                hidden
+                            >
+                                Discard changes
+                            </button>
+                        </div>
+                    </div>
                     <div class="overflow-x-auto rounded-lg border border-gray-200">
                         <table class="min-w-245 border-collapse text-left text-sm">
                             <thead class="bg-gray-100 text-gray-700">
@@ -123,7 +159,12 @@ export async function AdminPage({ error }: AdminPageProps = {}) {
                                     <th class="px-3 py-3" scope="col">
                                         Notes
                                     </th>
-                                    <th class="px-3 py-3" scope="col">
+                                    <th
+                                        class="px-3 py-3"
+                                        scope="col"
+                                        data-inventory-edit-only
+                                        hidden
+                                    >
                                         Actions
                                     </th>
                                 </tr>

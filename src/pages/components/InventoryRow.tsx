@@ -15,25 +15,45 @@ const tableInputClasses =
 
 export function InventoryRow({ item }: { item: InventoryItem }) {
     const updateFormId = `update-inventory-${item.id}`;
+    const imagePreviewId = `inventory-image-preview-${item.id}`;
+    const noImageId = `inventory-no-image-${item.id}`;
 
     return (
         <tr id={`inventory-${item.id}`} class="align-top">
             <td class="px-3 py-4 text-gray-600">{item.id}</td>
             <td class="px-3 py-4">
                 <div class="grid w-40 gap-2">
-                    {item.imageId !== null ? (
-                        <img
-                            class="aspect-4/3 w-24 rounded-md bg-gray-100 object-cover"
-                            src={`/api/images/${item.imageId}`}
-                            width="128"
-                            height="96"
-                            loading="lazy"
-                            alt={`${item.name} inventory image`}
-                        />
-                    ) : (
-                        <span class="text-xs text-gray-500">No image</span>
-                    )}
-                    <label class="grid gap-1 text-xs font-medium text-gray-700">
+                    <img
+                        id={imagePreviewId}
+                        class="aspect-4/3 w-24 rounded-md bg-gray-100 object-cover"
+                        src={
+                            item.imageId !== null
+                                ? `/api/images/${item.imageId}`
+                                : undefined
+                        }
+                        data-original-src={
+                            item.imageId !== null
+                                ? `/api/images/${item.imageId}`
+                                : ""
+                        }
+                        width="128"
+                        height="96"
+                        loading="lazy"
+                        alt={`${item.name} inventory image`}
+                        hidden={item.imageId === null}
+                    />
+                    <span
+                        id={noImageId}
+                        class="text-xs text-gray-500"
+                        hidden={item.imageId !== null}
+                    >
+                        No image
+                    </span>
+                    <label
+                        class="grid gap-1 text-xs font-medium text-gray-700"
+                        data-inventory-edit-only
+                        hidden
+                    >
                         {item.imageId === null
                             ? "Add image (optional)"
                             : "Replace image (optional)"}
@@ -43,6 +63,9 @@ export function InventoryRow({ item }: { item: InventoryItem }) {
                             type="file"
                             name="image"
                             accept="image/jpeg,image/png,image/webp"
+                            data-image-preview={imagePreviewId}
+                            data-image-empty={noImageId}
+                            disabled
                         />
                     </label>
                 </div>
@@ -54,6 +77,8 @@ export function InventoryRow({ item }: { item: InventoryItem }) {
                     name="name"
                     aria-label={`Name for inventory item ${item.id}`}
                     value={item.name}
+                    data-inventory-field
+                    readonly
                     required
                 />
             </td>
@@ -65,6 +90,8 @@ export function InventoryRow({ item }: { item: InventoryItem }) {
                     aria-label={`Price for inventory item ${item.id}`}
                     inputmode="decimal"
                     value={formatPrice(item.priceCentsX10)}
+                    data-inventory-field
+                    readonly
                     required
                 />
             </td>
@@ -78,6 +105,8 @@ export function InventoryRow({ item }: { item: InventoryItem }) {
                     min="0"
                     step="1"
                     value={String(item.quantity)}
+                    data-inventory-field
+                    readonly
                     required
                 />
             </td>
@@ -88,23 +117,19 @@ export function InventoryRow({ item }: { item: InventoryItem }) {
                     name="adminNotes"
                     aria-label={`Notes for inventory item ${item.id}`}
                     value={item.adminNotes ?? ""}
+                    data-inventory-field
+                    readonly
                 />
             </td>
-            <td class="px-3 py-4">
-                <div class="flex min-w-28 flex-col gap-2">
+            <td class="px-3 py-4" data-inventory-edit-only hidden>
+                <div>
                     <form
                         id={updateFormId}
                         method="post"
                         action={`/api/inventory/${item.id}`}
                         enctype="multipart/form-data"
-                    >
-                        <button
-                            class="w-full rounded-md bg-gray-950 px-3 py-2 font-medium text-white"
-                            type="submit"
-                        >
-                            Save
-                        </button>
-                    </form>
+                        data-inventory-update-form
+                    ></form>
                     <button
                         class="rounded-md border border-red-300 px-3 py-2 font-medium text-red-700"
                         type="button"
