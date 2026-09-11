@@ -24,30 +24,34 @@ export const inventoryTable = sqliteTable("inventory_table", {
     adminNotes: text(),
 });
 
+export const orderStatuses = ["unfulfilled", "fulfilled", "rejected"] as const;
+export type OrderStatus = (typeof orderStatuses)[number];
+
 export const ordersTable = sqliteTable("orders_table", {
-    // required
-    id: int().primaryKey({ autoIncrement: true }),
+    // Random IDs make customer order URLs impractical to enumerate.
+    id: text().primaryKey(),
+    submissionId: text().notNull().unique(),
     customerName: text().notNull(), // we keep things simple, no users_table, no auth, no login
-    fulfilled: int({ mode: "boolean" }).notNull(),
+    status: text({ enum: orderStatuses }).notNull().default("unfulfilled"),
     createdAt: int({ mode: "timestamp_ms" }).notNull(),
     lastModifiedAt: int({ mode: "timestamp_ms" }).notNull(),
 
-    // optional
     adminNotes: text(),
+    fulfilledAt: int({ mode: "timestamp_ms" }),
+    rejectedAt: int({ mode: "timestamp_ms" }),
 });
 
 export const orderItemsTable = sqliteTable("order_items_table", {
-    // required
     id: int().primaryKey({ autoIncrement: true }),
-    inventoryId: int()
-        .references(() => inventoryTable.id)
+    orderId: text()
+        .references(() => ordersTable.id, { onDelete: "cascade" })
         .notNull(),
+    // Deliberately not a foreign key: deleting catalogue inventory must not
+    // delete or prevent retaining an order's numeric reference.
+    inventoryId: int().notNull(),
     quantity: int().notNull(),
     createdAt: int({ mode: "timestamp_ms" }).notNull(),
     lastModifiedAt: int({ mode: "timestamp_ms" }).notNull(),
-
-    // optional
-    adminNotes: text(),
 });
 
 export const imagesTable = sqliteTable("images_table", {

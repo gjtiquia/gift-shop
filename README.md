@@ -54,6 +54,7 @@ bun run db:push
 ## tech stack
 
 production
+
 - [bun](https://bun.sh/)
 - [elysia](https://elysiajs.com/)
 - [drizzle with SQLite via Bun SQL](https://orm.drizzle.team/)
@@ -62,6 +63,7 @@ production
 - [tailwindcss](https://tailwindcss.com/)
 
 DX
+
 - formatter: [prettier](https://prettier.io/)
 
 ### setup steps
@@ -110,6 +112,7 @@ bun i -D prettier
 ### docs and notes
 
 #### elysia
+
 - Best Practices - MVC pattern: https://elysiajs.com/essential/best-practice.html
 - HTML and JSX: https://elysiajs.com/plugins/html
 - Static Files: https://elysiajs.com/plugins/static.html
@@ -123,35 +126,43 @@ bun i -D prettier
 #### lucia auth
 
 links
+
 - https://lucia-auth.com/
 - https://github.com/lucia-auth/lucia/blob/main/code/auth_session.ts
 
 notes
+
 - Lucia is deprecated, but is a one-file replacement
 - at the same time, we dont have "users", just a single "admin"
 - so we can reference the implementation and create a super simplified version of it
 
 #### frontend javascript
+
 - we bundle it using Bun (see `package.json` and `/src/pages/scripts/index.ts`)
 
 ## code conventions
 
 ### general
+
 - avoid over-engineering
 - keep things minimal and simple
 - use browser defaults as much as possible
 
 ### typescript
+
 - function ordering, as pragmatic as possible, order from high level to low level functions, so it reads nicely
 
 #### frontend scripts
+
 - reference [rsjs - Reasonable System for JavaScript Structure](https://ricostacruz.com/rsjs/)
     - `data-js-scriptName` attribute on elements with `scriptName.ts` as the corresponding script for that attribute
 
 ### tailwind classes
+
 - avoid margins as much as pragmatically possible
 
 ## troubleshooting
+
 - beware of html/js/css caching, we use git SHA to invalidate cache, try commiting things arent working (especially frontend scripts)
 
 ## todos
@@ -167,6 +178,5 @@ notes
 - [x] admin logout button
 - [x] admin button in home page
 - [x] admin inventory "hide item" control for catalogue
-- [ ] shop cart page
-- [ ] orders page
-
+- [x] shop cart page
+- [x] customer and admin orders pages

@@ -7,6 +7,7 @@ import { PageLayout } from "./layouts/PageLayout";
 export async function HomePage() {
     const items = await db
         .select({
+            id: inventoryTable.id,
             name: inventoryTable.name,
             priceCentsX10: inventoryTable.priceCentsX10,
             quantity: inventoryTable.quantity,
@@ -19,6 +20,15 @@ export async function HomePage() {
     return (
         <PageLayout
             title="Catalogue"
+            actions={
+                <a
+                    class="text-sm font-medium text-blue-700 underline decoration-blue-300 underline-offset-4 hover:text-blue-900"
+                    href="/cart"
+                    data-js-cartLink
+                >
+                    Cart
+                </a>
+            }
             footerActions={
                 <a
                     class="text-xs text-gray-400 hover:text-gray-600"
@@ -55,7 +65,12 @@ export async function HomePage() {
                                     No image available
                                 </div>
                             )}
-                            <div class="grid gap-2 p-4">
+                            <div
+                                class="grid gap-3 p-4"
+                                data-js-catalogueItem
+                                data-inventory-id={String(item.id)}
+                                data-max-quantity={String(item.quantity)}
+                            >
                                 <h2 class="text-lg font-semibold text-gray-950">
                                     {item.name}
                                 </h2>
@@ -67,6 +82,52 @@ export async function HomePage() {
                                         ? "Out of stock"
                                         : `${item.quantity} in stock`}
                                 </p>
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <div class="flex items-center rounded-md border border-gray-300">
+                                        <button
+                                            class="px-3 py-2 font-medium disabled:text-gray-300"
+                                            type="button"
+                                            aria-label={`Decrease ${item.name} quantity`}
+                                            data-js-quantityDecrease
+                                            disabled={item.quantity === 0}
+                                        >
+                                            −
+                                        </button>
+                                        <input
+                                            class="w-14 border-x border-gray-300 py-2 text-center"
+                                            type="number"
+                                            min="1"
+                                            max={String(item.quantity)}
+                                            step="1"
+                                            value="1"
+                                            aria-label={`${item.name} quantity`}
+                                            data-js-quantityInput
+                                            disabled={item.quantity === 0}
+                                        />
+                                        <button
+                                            class="px-3 py-2 font-medium disabled:text-gray-300"
+                                            type="button"
+                                            aria-label={`Increase ${item.name} quantity`}
+                                            data-js-quantityIncrease
+                                            disabled={item.quantity === 0}
+                                        >
+                                            +
+                                        </button>
+                                    </div>
+                                    <button
+                                        class="rounded-md bg-gray-950 px-4 py-2 text-sm font-medium text-white disabled:bg-gray-300"
+                                        type="button"
+                                        data-js-addToCart
+                                        disabled={item.quantity === 0}
+                                    >
+                                        Add
+                                    </button>
+                                    <span
+                                        class="text-sm text-green-700"
+                                        aria-live="polite"
+                                        data-js-addedMessage
+                                    ></span>
+                                </div>
                             </div>
                         </article>
                     ))}

@@ -3,6 +3,7 @@ import { asc } from "drizzle-orm";
 import { db, inventoryTable } from "../db";
 import { InventoryRow } from "./components/InventoryRow";
 import { PageLayout } from "./layouts/PageLayout";
+import { countUnfulfilledOrders } from "../api/orders/service";
 
 interface AdminPageProps {
     error?: string;
@@ -12,10 +13,10 @@ const inputClasses =
     "w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900";
 
 export async function AdminPage({ error }: AdminPageProps = {}) {
-    const items = await db
-        .select()
-        .from(inventoryTable)
-        .orderBy(asc(inventoryTable.id));
+    const [items, unfulfilledOrderCount] = await Promise.all([
+        db.select().from(inventoryTable).orderBy(asc(inventoryTable.id)),
+        countUnfulfilledOrders(),
+    ]);
 
     return (
         <PageLayout
@@ -24,9 +25,17 @@ export async function AdminPage({ error }: AdminPageProps = {}) {
                 <>
                     <a
                         class="text-sm font-medium text-blue-700 underline decoration-blue-300 underline-offset-4 hover:text-blue-900"
+                        href="/admin/orders"
+                    >
+                        {unfulfilledOrderCount > 0
+                            ? `Orders (${unfulfilledOrderCount})`
+                            : "Orders"}
+                    </a>
+                    <a
+                        class="text-sm font-medium text-blue-700 underline decoration-blue-300 underline-offset-4 hover:text-blue-900"
                         href="/"
                     >
-                        View catalogue
+                        Catalogue
                     </a>
                     <form method="post" action="/auth/logout">
                         <button
