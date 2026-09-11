@@ -1,6 +1,10 @@
 import { html, Html } from "@elysia/html";
 import type { OrderView } from "../api/orders/service";
 import { formatPrice } from "../utils";
+import {
+    orderStatusClasses,
+    orderStatusLinkClasses,
+} from "./components/OrderPresentation";
 import { PageLayout } from "./layouts/PageLayout";
 
 export function AdminOrdersPage({ orders }: { orders: OrderView[] }) {
@@ -45,7 +49,7 @@ export function AdminOrdersPage({ orders }: { orders: OrderView[] }) {
                                 <th class="px-3 py-3">Customer</th>
                                 <th class="px-3 py-3">Status</th>
                                 <th class="px-3 py-3">Units</th>
-                                <th class="px-3 py-3">Current total</th>
+                                <th class="px-3 py-3">Total</th>
                                 <th class="px-3 py-3"></th>
                             </tr>
                         </thead>
@@ -63,7 +67,9 @@ export function AdminOrdersPage({ orders }: { orders: OrderView[] }) {
                                     0,
                                 );
                                 return (
-                                    <tr>
+                                    <tr
+                                        class={orderStatusClasses(order.status)}
+                                    >
                                         <td class="px-3 py-3">
                                             {order.createdAt.toLocaleString()}
                                         </td>
@@ -79,7 +85,7 @@ export function AdminOrdersPage({ orders }: { orders: OrderView[] }) {
                                         </td>
                                         <td class="px-3 py-3 text-right">
                                             <a
-                                                class="font-medium text-blue-700 underline"
+                                                class={`font-medium underline ${orderStatusLinkClasses(order.status)}`}
                                                 href={`/admin/orders/${order.id}`}
                                             >
                                                 View

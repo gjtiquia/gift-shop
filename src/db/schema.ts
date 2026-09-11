@@ -52,6 +52,9 @@ export const orderItemsTable = sqliteTable("order_items_table", {
     quantity: int().notNull(),
     createdAt: int({ mode: "timestamp_ms" }).notNull(),
     lastModifiedAt: int({ mode: "timestamp_ms" }).notNull(),
+
+    // optional
+    adminNotes: text(),
 });
 
 export const imagesTable = sqliteTable("images_table", {

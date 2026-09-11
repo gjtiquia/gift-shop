@@ -23,10 +23,20 @@ export function CartPage() {
             }
         >
             <section class="grid gap-6" data-js-cartPage>
+                <form
+                    hidden
+                    data-js-cartContentsForm
+                    hx-post="/cart/contents"
+                    hx-target="[data-js-cartContents]"
+                    hx-swap="innerHTML"
+                    hx-sync="this:replace"
+                >
+                    <input name="cart" data-js-cartPayload />
+                </form>
                 <p class="text-gray-600" data-js-cartLoading>
                     Loading cart…
                 </p>
-                <div class="grid gap-4" data-js-cartItems></div>
+                <div data-js-cartContents></div>
                 <p
                     class="font-medium text-red-700"
                     role="alert"

@@ -6,16 +6,34 @@ export function OrdersPage() {
         <PageLayout
             title="Order history"
             actions={
-                <a
-                    class="text-sm font-medium text-blue-700 underline decoration-blue-300 underline-offset-4 hover:text-blue-900"
-                    href="/cart"
-                    data-js-cartLink
-                >
-                    Cart
-                </a>
+                <>
+                    <a
+                        class="text-sm font-medium text-blue-700 underline decoration-blue-300 underline-offset-4 hover:text-blue-900"
+                        href="/"
+                    >
+                        Catalogue
+                    </a>
+                    <a
+                        class="text-sm font-medium text-blue-700 underline decoration-blue-300 underline-offset-4 hover:text-blue-900"
+                        href="/cart"
+                        data-js-cartLink
+                    >
+                        Cart
+                    </a>
+                </>
             }
         >
             <section class="grid gap-4" data-js-ordersPage>
+                <form
+                    hidden
+                    data-js-ordersHistoryForm
+                    hx-post="/orders/history"
+                    hx-target="[data-js-ordersList]"
+                    hx-swap="innerHTML"
+                    hx-sync="this:replace"
+                >
+                    <input name="ids" data-js-ordersHistoryPayload />
+                </form>
                 <p class="text-gray-600" data-js-ordersLoading>
                     Loading order history…
                 </p>
@@ -24,7 +42,7 @@ export function OrdersPage() {
                     role="alert"
                     data-js-ordersError
                 ></p>
-                <div class="grid gap-3" data-js-ordersList></div>
+                <div data-js-ordersList></div>
             </section>
         </PageLayout>
     );

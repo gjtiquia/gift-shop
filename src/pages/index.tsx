@@ -1,9 +1,15 @@
 import { Elysia } from "elysia";
 import { html, Html } from "@elysia/html";
 import { staticPlugin } from "@elysia/static";
-import { asc } from "drizzle-orm";
+import { asc, inArray } from "drizzle-orm";
 import { db, inventoryTable } from "../db";
-import { getAdminOrders, getOrder, isOrderId } from "../api/orders/service";
+import {
+    getAdminOrders,
+    getOrder,
+    getOrders,
+    isOrderId,
+} from "../api/orders/service";
+import { isValidCsrfRequest } from "../auth/csrf";
 import { HomePage } from "./HomePage";
 import { CartPage } from "./CartPage";
 import { OrdersPage } from "./OrdersPage";
@@ -12,6 +18,8 @@ import { AdminOrdersPage } from "./AdminOrdersPage";
 import { AdminOrderPage } from "./AdminOrderPage";
 import { AdminLoginPage } from "./AdminLoginPage";
 import { AdminPage } from "./AdminPage";
+import { CartContents } from "./components/CartContents";
+import { OrderHistoryList } from "./components/OrderPresentation";
 import {
     authSessionCookieName,
     validateAuthSessionCookie,
@@ -29,7 +37,48 @@ export const pages = new Elysia()
     .use(html())
     .get("/", () => <HomePage />)
     .get("/cart", () => <CartPage />)
+    .post("/cart/contents", async ({ request }) => {
+        if (!isValidCsrfRequest(request)) {
+            return new Response(null, { status: 403 });
+        }
+        const items = parseCartPayload(
+            String((await request.formData()).get("cart") ?? ""),
+        );
+        const inventoryIds = items.map((item) => item.inventoryId);
+        const inventory =
+            inventoryIds.length === 0
+                ? []
+                : await db
+                      .select({
+                          id: inventoryTable.id,
+                          name: inventoryTable.name,
+                          priceCentsX10: inventoryTable.priceCentsX10,
+                          quantity: inventoryTable.quantity,
+                          imageId: inventoryTable.imageId,
+                      })
+                      .from(inventoryTable)
+                      .where(inArray(inventoryTable.id, inventoryIds));
+        const inventoryById = new Map(inventory.map((item) => [item.id, item]));
+        return (
+            <CartContents
+                revision={cartPayloadRevision(items)}
+                items={items.map((item) => ({
+                    ...item,
+                    inventory: inventoryById.get(item.inventoryId) ?? null,
+                }))}
+            />
+        );
+    })
     .get("/orders", () => <OrdersPage />)
+    .post("/orders/history", async ({ request }) => {
+        if (!isValidCsrfRequest(request)) {
+            return new Response(null, { status: 403 });
+        }
+        const ids = parseOrderHistoryPayload(
+            String((await request.formData()).get("ids") ?? ""),
+        );
+        return <OrderHistoryList orders={await getOrders(ids)} />;
+    })
     .get("/orders/:id", async ({ params, set }) => {
         const order = isOrderId(params.id) ? await getOrder(params.id) : null;
         if (!order) {
@@ -104,3 +153,54 @@ export const pages = new Elysia()
             );
         },
     );
+
+export function parseCartPayload(value: string) {
+    try {
+        const parsed: unknown = JSON.parse(value);
+        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+            return [];
+        }
+        return Object.entries(parsed)
+            .filter(
+                ([id, quantity]) =>
+                    /^\d+$/.test(id) &&
+                    Number(id) > 0 &&
+                    Number.isSafeInteger(quantity) &&
+                    Number(quantity) > 0,
+            )
+            .slice(0, 100)
+            .map(([id, quantity]) => ({
+                inventoryId: Number(id),
+                quantity: Number(quantity),
+            }));
+    } catch {
+        return [];
+    }
+}
+
+export function parseOrderHistoryPayload(value: string) {
+    try {
+        const parsed: unknown = JSON.parse(value);
+        if (!Array.isArray(parsed)) return [];
+        return Array.from(
+            new Set(
+                parsed.filter(
+                    (id): id is string =>
+                        typeof id === "string" && isOrderId(id),
+                ),
+            ),
+        ).slice(0, 100);
+    } catch {
+        return [];
+    }
+}
+
+function cartPayloadRevision(
+    items: Array<{ inventoryId: number; quantity: number }>,
+) {
+    return JSON.stringify(
+        items
+            .map((item) => [String(item.inventoryId), item.quantity] as const)
+            .sort(([first], [second]) => Number(first) - Number(second)),
+    );
+}

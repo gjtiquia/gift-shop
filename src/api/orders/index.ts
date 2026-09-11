@@ -69,8 +69,13 @@ export const orders = new Elysia({ prefix: "orders" })
         const form = await request.formData();
         const inventoryIds = form.getAll("inventoryId");
         const quantities = form.getAll("quantity");
+        const itemAdminNotes = form.getAll("itemAdminNotes");
         const removed = new Set(form.getAll("remove").map(String));
-        const items: Array<{ inventoryId: number; quantity: number }> = [];
+        const items: Array<{
+            inventoryId: number;
+            quantity: number;
+            adminNotes?: string;
+        }> = [];
         for (let index = 0; index < inventoryIds.length; index++) {
             const inventoryIdValue = String(inventoryIds[index] ?? "").trim();
             const quantityValue = String(quantities[index] ?? "").trim();
@@ -79,6 +84,7 @@ export const orders = new Elysia({ prefix: "orders" })
             items.push({
                 inventoryId: Number(inventoryIdValue),
                 quantity: Number(quantityValue),
+                adminNotes: String(itemAdminNotes[index] ?? ""),
             });
         }
         const result = await editOrder(params.id, {
@@ -137,7 +143,7 @@ export const orders = new Elysia({ prefix: "orders" })
         );
     });
 
-function publicOrder(order: OrderView) {
+export function publicOrder(order: OrderView) {
     return {
         id: order.id,
         customerName: order.customerName,
@@ -146,7 +152,11 @@ function publicOrder(order: OrderView) {
         lastModifiedAt: order.lastModifiedAt,
         fulfilledAt: order.fulfilledAt,
         rejectedAt: order.rejectedAt,
-        items: order.items,
+        items: order.items.map((item) => ({
+            inventoryId: item.inventoryId,
+            quantity: item.quantity,
+            inventory: item.inventory,
+        })),
     };
 }
 

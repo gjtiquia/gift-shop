@@ -448,13 +448,6 @@ function normalizeInput(input, maximum) {
   input.value = String(validQuantity(input, maximum));
 }
 
-// src/utils.ts
-function formatPrice(priceCentsX10) {
-  const whole = Math.floor(priceCentsX10 / 100);
-  const fraction = String(priceCentsX10 % 100).padStart(2, "0");
-  return `${whole}.${fraction}`;
-}
-
 // src/pages/scripts/cartPageState.ts
 class CartPageState {
   generation = 0;
@@ -475,6 +468,12 @@ class CartPageState {
   isCurrentRender(token, currentCart) {
     return token.generation === this.generation && token.revision === cartRevision(currentCart);
   }
+  acceptRenderedRevision(revision, currentCart) {
+    if (revision !== cartRevision(currentCart))
+      return false;
+    this.renderedRevision = revision;
+    return true;
+  }
   canSubmit(cart) {
     return this.renderedRevision === cartRevision(cart);
   }
@@ -485,122 +484,110 @@ for (const page of document.querySelectorAll("[data-js-cartPage]")) {
   setupCartPage(page);
 }
 function setupCartPage(page) {
+  const contentsFormCandidate = page.querySelector("[data-js-cartContentsForm]");
+  const payloadCandidate = page.querySelector("[data-js-cartPayload]");
+  const contentsCandidate = page.querySelector("[data-js-cartContents]");
   const loadingCandidate = page.querySelector("[data-js-cartLoading]");
-  const itemsCandidate = page.querySelector("[data-js-cartItems]");
   const errorCandidate = page.querySelector("[data-js-cartError]");
-  const formCandidate = page.querySelector("[data-js-checkoutForm]");
-  if (!loadingCandidate || !itemsCandidate || !errorCandidate || !formCandidate) {
+  const checkoutFormCandidate = page.querySelector("[data-js-checkoutForm]");
+  if (!contentsFormCandidate || !payloadCandidate || !contentsCandidate || !loadingCandidate || !errorCandidate || !checkoutFormCandidate) {
     return;
   }
+  const contentsForm = contentsFormCandidate;
+  const payload = payloadCandidate;
+  const contents = contentsCandidate;
   const loading = loadingCandidate;
-  const itemsElement = itemsCandidate;
   const errorElement = errorCandidate;
-  const checkoutForm = formCandidate;
+  const checkoutForm = checkoutFormCandidate;
   const state = new CartPageState;
-  render();
+  const refreshWhenReady = () => void refresh();
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", refreshWhenReady, {
+      once: true
+    });
+  } else {
+    refreshWhenReady();
+  }
   window.addEventListener("storage", (event) => {
     if (event.key === cartStorageKey)
-      render();
+      refresh();
   });
+  contents.addEventListener("click", handleContentsClick);
+  contents.addEventListener("change", handleQuantityChange);
   checkoutForm.addEventListener("submit", submitOrder);
-  async function render() {
+  document.body.addEventListener("htmx:afterSwap", handleAfterSwap);
+  document.body.addEventListener("htmx:responseError", handleResponseError);
+  async function refresh() {
     const cart = readCart();
-    const renderToken = state.beginRender(cart);
-    const ids = Object.keys(cart);
-    itemsElement.replaceChildren();
-    checkoutForm.hidden = ids.length === 0;
-    if (ids.length === 0) {
-      if (!state.acceptRender(renderToken, readCart()))
-        return;
-      errorElement.textContent = "";
-      loading.textContent = "Your cart is empty.";
+    state.beginRender(cart);
+    payload.value = JSON.stringify(cart);
+    checkoutForm.hidden = Object.keys(cart).length === 0;
+    loading.textContent = "Loading cart…";
+    errorElement.textContent = "";
+    contentsForm.requestSubmit();
+  }
+  function handleAfterSwap(event) {
+    const target = event.detail?.target;
+    if (target !== contents)
+      return;
+    const rendered = contents.querySelector("[data-js-cartRendered]");
+    const currentRevision = cartRevision(readCart());
+    if (!rendered?.dataset.cartRevision || !state.acceptRenderedRevision(rendered.dataset.cartRevision, readCart())) {
+      refresh();
       return;
     }
-    loading.textContent = "Loading cart…";
-    try {
-      const response = await fetch(`/api/inventory/cart?ids=${encodeURIComponent(ids.join(","))}`);
-      if (!response.ok)
-        throw new Error("Could not load the cart.");
-      const inventory = await response.json();
-      if (!state.acceptRender(renderToken, readCart()))
-        return;
-      const currentInventory = new Map(inventory.map((item) => [item.id, item]));
-      errorElement.textContent = "";
-      let total = 0;
-      for (const id of ids) {
-        const inventoryId = Number(id);
-        const item = currentInventory.get(inventoryId);
-        const quantity = cart[id];
-        itemsElement.append(createCartItem(inventoryId, quantity, item));
-        if (item)
-          total += item.priceCentsX10 * quantity;
-      }
-      const totalElement = document.createElement("p");
-      totalElement.className = "text-lg font-semibold text-right";
-      totalElement.textContent = `Current marked total: ${formatPrice(total)}`;
-      itemsElement.append(totalElement);
-      loading.textContent = "";
-    } catch (error) {
-      if (!state.isCurrentRender(renderToken, readCart()))
-        return;
-      loading.textContent = "";
-      errorElement.textContent = errorMessage(error, "Could not load the cart.");
+    loading.textContent = "";
+    checkoutForm.hidden = Object.keys(readCart()).length === 0;
+  }
+  function handleResponseError(event) {
+    const detail = event.detail;
+    if (detail?.elt !== contentsForm && detail?.target !== contents)
+      return;
+    loading.textContent = "";
+    errorElement.textContent = "Could not load the cart.";
+  }
+  function handleContentsClick(event) {
+    const target = event.target;
+    if (!(target instanceof Element))
+      return;
+    const item = target.closest("[data-js-cartItem]");
+    if (!item)
+      return;
+    const inventoryId = Number(item.dataset.inventoryId);
+    const input = item.querySelector("[data-js-cartQuantity]");
+    if (!Number.isSafeInteger(inventoryId) || !input)
+      return;
+    if (target.closest("[data-js-cartRemove]")) {
+      changeQuantity(inventoryId, 0);
+    } else if (target.closest("[data-js-cartDecrease]")) {
+      changeQuantity(inventoryId, Math.max(1, Number(input.value) - 1));
+    } else if (target.closest("[data-js-cartIncrease]")) {
+      changeQuantity(inventoryId, limitedQuantity(Number(input.value) + 1, item));
     }
   }
-  function createCartItem(inventoryId, quantity, item) {
-    const article = document.createElement("article");
-    article.className = "grid gap-3 rounded-lg border border-gray-200 bg-white p-4 shadow-sm sm:grid-cols-[1fr_auto] sm:items-center";
-    const description = document.createElement("div");
-    const heading = document.createElement("h2");
-    heading.className = "font-semibold";
-    heading.textContent = item?.name ?? `Deleted inventory item #${inventoryId}`;
-    const detail = document.createElement("p");
-    detail.className = "text-sm text-gray-600";
-    detail.textContent = item ? `${formatPrice(item.priceCentsX10)} each · ${item.quantity} currently available` : "This item was deleted, but can still be submitted for admin review.";
-    description.append(heading, detail);
-    const controls = document.createElement("div");
-    controls.className = "flex flex-wrap items-center gap-2";
-    const decrease = button("−", `Decrease ${heading.textContent} quantity`);
-    const input = document.createElement("input");
-    input.className = "w-16 rounded-md border border-gray-300 px-2 py-2 text-center";
-    input.type = "number";
-    input.min = "1";
-    input.step = "1";
-    input.value = String(quantity);
-    input.setAttribute("aria-label", `${heading.textContent} quantity`);
-    if (item)
-      input.max = String(item.quantity);
-    const increase = button("+", `Increase ${heading.textContent} quantity`);
-    increase.disabled = item ? quantity >= item.quantity : false;
-    decrease.disabled = quantity <= 1;
-    const remove = button("Remove", `Remove ${heading.textContent}`);
-    remove.className = "rounded-md border border-red-300 px-3 py-2 text-sm font-medium text-red-700";
-    decrease.addEventListener("click", () => {
-      changeQuantity(inventoryId, Math.max(1, Number(input.value) - 1));
-    });
-    increase.addEventListener("click", () => {
-      const next = Number(input.value) + 1;
-      changeQuantity(inventoryId, item ? Math.min(item.quantity, next) : next);
-    });
-    input.addEventListener("change", () => {
-      const next = Number(input.value);
-      if (!Number.isSafeInteger(next) || next < 1)
-        input.value = String(quantity);
-      else {
-        changeQuantity(inventoryId, item ? Math.min(item.quantity, next) : next);
-      }
-    });
-    remove.addEventListener("click", () => {
-      changeQuantity(inventoryId, 0);
-    });
-    controls.append(decrease, input, increase, remove);
-    article.append(description, controls);
-    return article;
+  function handleQuantityChange(event) {
+    const input = event.target;
+    if (!(input instanceof HTMLInputElement))
+      return;
+    if (!input.matches("[data-js-cartQuantity]"))
+      return;
+    const item = input.closest("[data-js-cartItem]");
+    const inventoryId = Number(item?.dataset.inventoryId);
+    const quantity = Number(input.value);
+    if (!item || !Number.isSafeInteger(inventoryId) || !Number.isSafeInteger(quantity) || quantity < 1) {
+      refresh();
+      return;
+    }
+    changeQuantity(inventoryId, limitedQuantity(quantity, item));
+  }
+  function limitedQuantity(quantity, item) {
+    const maximum = Number(item.dataset.maxQuantity);
+    return Number.isSafeInteger(maximum) && maximum > 0 ? Math.min(maximum, quantity) : quantity;
   }
   async function changeQuantity(inventoryId, quantity) {
     await setCartQuantity(inventoryId, quantity);
     document.dispatchEvent(new CustomEvent("cartchange"));
-    await render();
+    await refresh();
   }
   async function submitOrder(event) {
     event.preventDefault();
@@ -609,7 +596,7 @@ function setupCartPage(page) {
     const renderedCart = readCart();
     if (!state.canSubmit(renderedCart)) {
       errorElement.textContent = "The cart changed. Review the latest quantities before submitting.";
-      render();
+      refresh();
       return;
     }
     const submitButton = checkoutForm.querySelector('button[type="submit"]');
@@ -620,10 +607,8 @@ function setupCartPage(page) {
     try {
       const checkout = await beginCheckout(cartRevision(renderedCart));
       if (checkout.status === "cart-changed") {
-        if (submitButton)
-          submitButton.disabled = false;
         errorElement.textContent = "The cart changed. Review the latest quantities before submitting.";
-        render();
+        refresh();
         return;
       }
       const items = Object.entries(checkout.cart).map(([inventoryId, quantity]) => ({
@@ -631,8 +616,6 @@ function setupCartPage(page) {
         quantity
       }));
       if (items.length === 0 || !window.confirm("Submit this order?")) {
-        if (submitButton)
-          submitButton.disabled = false;
         return;
       }
       errorElement.textContent = "";
@@ -655,18 +638,11 @@ function setupCartPage(page) {
       window.location.assign(`/orders/${result.order.id}`);
     } catch (error) {
       errorElement.textContent = errorMessage(error, "Could not submit the order.");
+    } finally {
       if (submitButton)
         submitButton.disabled = false;
     }
   }
-}
-function button(text, label) {
-  const element = document.createElement("button");
-  element.className = "rounded-md border border-gray-300 px-3 py-2 font-medium";
-  element.type = "button";
-  element.textContent = text;
-  element.setAttribute("aria-label", label);
-  return element;
 }
 function errorMessage(error, fallback) {
   return error instanceof Error ? error.message : fallback;
@@ -674,49 +650,79 @@ function errorMessage(error, fallback) {
 
 // src/pages/scripts/ordersPage.ts
 for (const page of document.querySelectorAll("[data-js-ordersPage]")) {
-  renderOrders(page);
+  setupOrdersPage(page);
 }
-async function renderOrders(page) {
+function setupOrdersPage(page) {
+  const form = page.querySelector("[data-js-ordersHistoryForm]");
+  const payload = page.querySelector("[data-js-ordersHistoryPayload]");
   const loading = page.querySelector("[data-js-ordersLoading]");
   const error = page.querySelector("[data-js-ordersError]");
   const list = page.querySelector("[data-js-ordersList]");
-  if (!loading || !error || !list)
+  if (!form || !payload || !loading || !error || !list)
     return;
-  const ids = readOrderHistory();
-  if (ids.length === 0) {
-    loading.textContent = "No orders have been submitted from this browser.";
-    return;
+  const load = () => {
+    payload.value = JSON.stringify(readOrderHistory());
+    form.requestSubmit();
+  };
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", load, { once: true });
+  } else {
+    load();
   }
-  try {
-    const response = await fetch(`/api/orders?ids=${encodeURIComponent(ids.join(","))}`);
-    if (!response.ok)
-      throw new Error("Could not load order history.");
-    const orders = await response.json();
-    loading.textContent = orders.length === 0 ? "No saved orders were found." : "";
-    for (const order of orders)
-      list.append(createOrderLink(order));
-  } catch (caught) {
+  window.addEventListener("storage", (event) => {
+    if (event.key === orderHistoryStorageKey)
+      load();
+  });
+  document.body.addEventListener("htmx:afterSwap", (event) => {
+    const target = event.detail?.target;
+    if (target !== list)
+      return;
     loading.textContent = "";
-    error.textContent = caught instanceof Error ? caught.message : "Could not load order history.";
-  }
+    error.textContent = "";
+  });
+  document.body.addEventListener("htmx:responseError", (event) => {
+    const detail = event.detail;
+    if (detail?.elt !== form && detail?.target !== list)
+      return;
+    loading.textContent = "";
+    error.textContent = "Could not load order history.";
+  });
 }
-function createOrderLink(order) {
-  const link = document.createElement("a");
-  link.className = "grid gap-2 rounded-lg border border-gray-200 bg-white p-4 shadow-sm hover:border-gray-400 sm:grid-cols-4";
-  link.href = `/orders/${order.id}`;
-  const units = order.items.reduce((sum, item) => sum + item.quantity, 0);
-  const total = order.items.reduce((sum, item) => sum + (item.inventory?.priceCentsX10 ?? 0) * item.quantity, 0);
-  for (const text of [
-    new Date(order.createdAt).toLocaleString(),
-    order.customerName,
-    `${order.status[0]?.toUpperCase()}${order.status.slice(1)}`,
-    `${units} units · ${formatPrice(total)} current total`
-  ]) {
-    const span = document.createElement("span");
-    span.textContent = text;
-    link.append(span);
+
+// src/pages/scripts/orderEditor.ts
+for (const section of document.querySelectorAll("[data-js-orderEditor]")) {
+  setupOrderEditor(section);
+}
+function setupOrderEditor(section) {
+  const formCandidate = section.querySelector("[data-js-orderEditForm]");
+  const editCandidate = section.querySelector("[data-js-orderEdit]");
+  const saveCandidate = section.querySelector("[data-js-orderSave]");
+  const discardCandidate = section.querySelector("[data-js-orderDiscard]");
+  if (!formCandidate || !editCandidate || !saveCandidate || !discardCandidate)
+    return;
+  const form = formCandidate;
+  const edit = editCandidate;
+  const save = saveCandidate;
+  const discard = discardCandidate;
+  edit.addEventListener("click", () => setEditMode(true));
+  discard.addEventListener("click", () => {
+    form.reset();
+    setEditMode(false);
+  });
+  function setEditMode(enabled) {
+    for (const field of section.querySelectorAll("[data-js-orderField]")) {
+      field.disabled = !enabled;
+    }
+    for (const element of section.querySelectorAll("[data-js-orderEditOnly]")) {
+      element.hidden = !enabled;
+    }
+    for (const element of section.querySelectorAll("[data-js-orderReadOnly]")) {
+      element.hidden = enabled;
+    }
+    edit.hidden = enabled;
+    save.hidden = !enabled;
+    discard.hidden = !enabled;
   }
-  return link;
 }
 
 // src/pages/scripts/nativeAlert.ts

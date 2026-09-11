@@ -30,6 +30,12 @@ export class CartPageState {
         );
     }
 
+    acceptRenderedRevision(revision: string, currentCart: Cart) {
+        if (revision !== cartRevision(currentCart)) return false;
+        this.renderedRevision = revision;
+        return true;
+    }
+
     canSubmit(cart: Cart) {
         return this.renderedRevision === cartRevision(cart);
     }

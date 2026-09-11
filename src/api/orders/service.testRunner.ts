@@ -8,7 +8,19 @@ import {
     rejectOrder,
     restoreOrder,
 } from "./service";
+import { publicOrder } from "./index";
+import { pages, parseCartPayload, parseOrderHistoryPayload } from "../../pages";
 import { db, inventoryTable, orderItemsTable, ordersTable } from "../../db";
+import { AdminOrderPage } from "../../pages/AdminOrderPage";
+
+assert.deepEqual(parseCartPayload('{"2":3,"bad":4,"4":0}'), [
+    { inventoryId: 2, quantity: 3 },
+]);
+const historyId = crypto.randomUUID();
+assert.deepEqual(
+    parseOrderHistoryPayload(JSON.stringify([historyId, historyId, "bad"])),
+    [historyId],
+);
 
 async function reset() {
     await db.delete(orderItemsTable);
@@ -155,7 +167,13 @@ assert.deepEqual(
     await editOrder(editable.order.id, {
         customerName: "Changed",
         adminNotes: "Bargained separately",
-        items: [{ inventoryId: kept.id, quantity: 4 }],
+        items: [
+            {
+                inventoryId: kept.id,
+                quantity: 4,
+                adminNotes: "Pack separately",
+            },
+        ],
     }),
     { status: "success" },
 );
@@ -168,7 +186,68 @@ assert.equal(
     )[0]?.quantity,
     3,
 );
-assert.equal((await getOrder(editable.order.id))?.customerName, "Changed");
-assert.equal((await getOrder(editable.order.id))?.items[0]?.quantity, 4);
+const editedOrder = await getOrder(editable.order.id);
+assert.equal(editedOrder?.customerName, "Changed");
+assert.equal(editedOrder?.items[0]?.quantity, 4);
+assert.equal(editedOrder?.items[0]?.adminNotes, "Pack separately");
+assert.equal(
+    (await db.select().from(orderItemsTable).limit(1))[0]?.adminNotes,
+    "Pack separately",
+);
+if (!editedOrder) throw new Error("edited order was not found");
+const customerOrder = publicOrder(editedOrder);
+assert.equal("adminNotes" in customerOrder, false);
+assert.equal("adminNotes" in customerOrder.items[0]!, false);
+assert.equal(JSON.stringify(customerOrder).includes("Pack separately"), false);
+assert.equal(
+    JSON.stringify(customerOrder).includes("Bargained separately"),
+    false,
+);
+
+const cartPartialResponse = await pages.handle(
+    new Request("http://localhost/cart/contents", {
+        method: "POST",
+        headers: { Origin: "http://localhost" },
+        body: new URLSearchParams({
+            cart: JSON.stringify({ [kept.id]: 1 }),
+        }),
+    }),
+);
+assert.equal(cartPartialResponse.status, 200);
+const cartPartial = await cartPartialResponse.text();
+assert.match(cartPartial, /Kept/);
+assert.match(cartPartial, /Line total:/);
+assert.match(cartPartial, /Total:/);
+
+const historyPartialResponse = await pages.handle(
+    new Request("http://localhost/orders/history", {
+        method: "POST",
+        headers: { Origin: "http://localhost" },
+        body: new URLSearchParams({ ids: JSON.stringify([editable.order.id]) }),
+    }),
+);
+assert.equal(historyPartialResponse.status, 200);
+const historyPartial = await historyPartialResponse.text();
+assert.match(historyPartial, /Changed/);
+assert.equal(historyPartial.includes("Pack separately"), false);
+assert.equal(historyPartial.includes("Bargained separately"), false);
+
+const customerOrderPageResponse = await pages.handle(
+    new Request(`http://localhost/orders/${editable.order.id}`),
+);
+assert.equal(customerOrderPageResponse.status, 200);
+const customerOrderPage = await customerOrderPageResponse.text();
+assert.equal(customerOrderPage.includes("Pack separately"), false);
+assert.equal(customerOrderPage.includes("Bargained separately"), false);
+assert.equal(customerOrderPage.includes("text-white/80"), false);
+assert.equal(customerOrderPage.includes("text-white"), true);
+
+const adminOrderPage = String(
+    AdminOrderPage({ order: editedOrder, inventory: [kept] }),
+);
+assert.match(adminOrderPage, /aria-label="Customer name"/);
+assert.match(adminOrderPage, /aria-label="Private notes for Kept, item 1"/);
+assert.match(adminOrderPage, /aria-label="Private order notes"/);
+assert.equal(adminOrderPage.includes("text-white/80"), false);
 
 console.log("ORDER_SERVICE_TESTS_PASSED");

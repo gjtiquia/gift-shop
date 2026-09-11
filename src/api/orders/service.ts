@@ -10,16 +10,19 @@ import {
 export interface SubmittedOrderItem {
     inventoryId: number;
     quantity: number;
+    adminNotes?: string;
 }
 
 export interface OrderItemView {
     inventoryId: number;
     quantity: number;
+    adminNotes: string | null;
     inventory: {
         name: string;
         priceCentsX10: number;
         quantity: number;
         hidden: boolean;
+        imageId: number | null;
     } | null;
 }
 
@@ -128,6 +131,7 @@ export async function createOrder(input: {
                         orderId: id,
                         inventoryId: item.inventoryId,
                         quantity: item.quantity,
+                        adminNotes: item.adminNotes || null,
                         createdAt: now,
                         lastModifiedAt: now,
                     })),
@@ -188,8 +192,14 @@ export async function editOrder(
     },
 ) {
     const customerName = input.customerName.trim();
+    const adminNotes = input.adminNotes?.trim();
     const items = normalizeItems(input.items);
-    if (!customerName || customerName.length > 200 || !items) {
+    if (
+        !customerName ||
+        customerName.length > 200 ||
+        (adminNotes?.length ?? 0) > 2_000 ||
+        !items
+    ) {
         return { status: "invalid" as const };
     }
 
@@ -199,7 +209,7 @@ export async function editOrder(
             .update(ordersTable)
             .set({
                 customerName,
-                adminNotes: input.adminNotes?.trim() || null,
+                adminNotes: adminNotes || null,
                 lastModifiedAt: now,
             })
             .where(eq(ordersTable.id, id))
@@ -218,6 +228,7 @@ export async function editOrder(
                     orderId: id,
                     inventoryId: item.inventoryId,
                     quantity: item.quantity,
+                    adminNotes: item.adminNotes || null,
                     createdAt: now,
                     lastModifiedAt: now,
                 })),
@@ -353,24 +364,33 @@ function normalizeItems(items: SubmittedOrderItem[]) {
     if (!Array.isArray(items) || items.length === 0 || items.length > 100) {
         return null;
     }
-    const totals = new Map<number, number>();
+    const normalized = new Map<
+        number,
+        { inventoryId: number; quantity: number; adminNotes?: string }
+    >();
     for (const item of items) {
+        const adminNotes = item.adminNotes?.trim();
         if (
             !Number.isSafeInteger(item.inventoryId) ||
             item.inventoryId <= 0 ||
             !Number.isSafeInteger(item.quantity) ||
-            item.quantity <= 0
+            item.quantity <= 0 ||
+            (adminNotes?.length ?? 0) > 2_000
         ) {
             return null;
         }
-        const quantity = (totals.get(item.inventoryId) ?? 0) + item.quantity;
+        const existing = normalized.get(item.inventoryId);
+        const quantity = (existing?.quantity ?? 0) + item.quantity;
         if (!Number.isSafeInteger(quantity)) return null;
-        totals.set(item.inventoryId, quantity);
+        normalized.set(item.inventoryId, {
+            inventoryId: item.inventoryId,
+            quantity,
+            adminNotes:
+                [existing?.adminNotes, adminNotes].filter(Boolean).join("\n") ||
+                undefined,
+        });
     }
-    return Array.from(totals, ([inventoryId, quantity]) => ({
-        inventoryId,
-        quantity,
-    }));
+    return Array.from(normalized.values());
 }
 
 function isSubmissionId(value: string) {
@@ -398,10 +418,12 @@ async function loadOrders(
             orderItemId: orderItemsTable.id,
             inventoryId: orderItemsTable.inventoryId,
             orderedQuantity: orderItemsTable.quantity,
+            orderItemAdminNotes: orderItemsTable.adminNotes,
             inventoryName: inventoryTable.name,
             priceCentsX10: inventoryTable.priceCentsX10,
             inventoryQuantity: inventoryTable.quantity,
             inventoryHidden: inventoryTable.hidden,
+            inventoryImageId: inventoryTable.imageId,
         })
         .from(ordersTable)
         .leftJoin(orderItemsTable, eq(orderItemsTable.orderId, ordersTable.id))
@@ -447,6 +469,7 @@ async function loadOrders(
             order.items.push({
                 inventoryId: row.inventoryId,
                 quantity: row.orderedQuantity,
+                adminNotes: row.orderItemAdminNotes,
                 inventory:
                     row.inventoryName === null ||
                     row.priceCentsX10 === null ||
@@ -458,6 +481,7 @@ async function loadOrders(
                               priceCentsX10: row.priceCentsX10,
                               quantity: row.inventoryQuantity,
                               hidden: row.inventoryHidden,
+                              imageId: row.inventoryImageId,
                           },
             });
         }

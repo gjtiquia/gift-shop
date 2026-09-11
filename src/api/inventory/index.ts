@@ -1,5 +1,4 @@
 import { Elysia } from "elysia";
-import { inArray } from "drizzle-orm";
 import { db, inventoryTable } from "../../db";
 import { isValidCsrfRequest } from "../../auth/csrf";
 import {
@@ -11,28 +10,6 @@ import { inventoryFormSchema, type InventoryForm } from "./model";
 import { createInventory, deleteInventory, updateInventory } from "./service";
 
 export const inventory = new Elysia({ prefix: "inventory" })
-    .get("/cart", async ({ query }) => {
-        const ids = Array.from(
-            new Set(
-                (query.ids ?? "")
-                    .split(",")
-                    .filter((id) => /^\d+$/.test(id))
-                    .map(Number)
-                    .filter((id) => Number.isSafeInteger(id) && id > 0),
-            ),
-        ).slice(0, 100);
-        if (ids.length === 0) return [];
-        return db
-            .select({
-                id: inventoryTable.id,
-                name: inventoryTable.name,
-                priceCentsX10: inventoryTable.priceCentsX10,
-                quantity: inventoryTable.quantity,
-                imageId: inventoryTable.imageId,
-            })
-            .from(inventoryTable)
-            .where(inArray(inventoryTable.id, ids));
-    })
     .post(
         "/",
         async ({ body, cookie, redirect, request, set }) => {
