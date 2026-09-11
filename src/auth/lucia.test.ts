@@ -24,11 +24,13 @@ function postPassword(
     password: string,
     url = "http://localhost/auth/login",
     secFetchSite: string | null = "same-origin",
+    origin: string | null = null,
 ) {
     const headers = new Headers({
         "content-type": "application/x-www-form-urlencoded",
     });
     if (secFetchSite) headers.set("Sec-Fetch-Site", secFetchSite);
+    if (origin) headers.set("Origin", origin);
 
     return app.handle(
         new Request(url, {
@@ -88,6 +90,22 @@ test("login rejects requests without same-origin CSRF metadata", async () => {
     );
     expect(crossSiteResponse.status).toBe(403);
     expect(crossSiteResponse.headers.get("set-cookie")).toBeNull();
+
+    const sameOriginFallbackResponse = await postPassword(
+        "correct-password",
+        "http://192.168.1.20/auth/login",
+        null,
+        "http://192.168.1.20",
+    );
+    expect(sameOriginFallbackResponse.status).toBe(303);
+
+    const crossOriginFallbackResponse = await postPassword(
+        "correct-password",
+        undefined,
+        null,
+        "http://example.com",
+    );
+    expect(crossOriginFallbackResponse.status).toBe(403);
 });
 
 test("a failed login redirects back and displays an error", async () => {
@@ -103,7 +121,8 @@ test("a failed login redirects back and displays an error", async () => {
     const html = await errorPage.text();
 
     expect(html).toContain("Incorrect password.");
-    expect(html).toContain('style="color: red;"');
+    expect(html).toContain('class="text-sm font-medium text-red-700"');
+    expect(html).toContain('role="alert"');
     expect(html).toContain("/public/htmx.min.js");
 
     const unrelatedErrorPage = await app.handle(
