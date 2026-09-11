@@ -19,6 +19,17 @@
 - order history should be preserved
 - this assumes an in-real-life cash/coupon style shop, where this online catalogue is to help facilitate that experience
 
+## target audience
+
+- for use with kids, kids are the intended users, and admins are staff
+- eg. use with accumulated coupons for kids to exchange for gifts
+
+## rationale
+
+- the purpose of fulfilling an order is to automate deducting inventory
+- other than that, orders and inventory can be decoupled
+- data needs to be as flexible as possible for any edge cases that arise (eg. price bargain)
+
 ## setup
 
 ```bash
