@@ -83,6 +83,19 @@ export async function AdminPage({ error }: AdminPageProps = {}) {
                             required
                         />
                     </label>
+                    <label class="grid content-start gap-2 text-sm font-medium text-gray-800">
+                        Catalogue
+                        <span class="flex items-center gap-2 py-2">
+                            <input
+                                class="size-4 rounded border-gray-300"
+                                type="checkbox"
+                                name="hidden"
+                                value="true"
+                                aria-label="Hide new inventory item from catalogue"
+                            />
+                            Hidden
+                        </span>
+                    </label>
                     <label class="grid gap-1 text-sm font-medium text-gray-800">
                         Notes
                         <input class={inputClasses} name="adminNotes" />

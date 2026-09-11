@@ -457,6 +457,9 @@ test("an admin can create and update inventory without an image", async () => {
     );
     const adminHtml = await adminResponse.text();
     expect(adminHtml).not.toContain(`hx-put="/api/inventory/${created.id}"`);
+    expect(adminHtml).toContain(
+        `aria-label="Hide new inventory item from catalogue"`,
+    );
     expect(adminHtml).toContain(`method="post"`);
     expect(adminHtml).toContain(`action="/api/inventory/${created.id}"`);
     expect(adminHtml).toContain(`hx-delete="/api/inventory/${created.id}"`);
