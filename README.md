@@ -156,9 +156,10 @@ notes
 - [x] setup htmx so forms can use resource-oriented HTTP verbs
 - [x] setup tailwind
 - [x] image uploading (JPEG, PNG, or WebP up to 5 MB)
+- [ ] admin logout button
+- [ ] admin button in home page
 - [ ] admin inventory "edit mode" toggle, and then save
 - [ ] admin inventory "hide item" button from catalogue button (would need to add hidden field in schema)
 - [ ] shop cart page
 - [ ] orders page
-- [ ] admin button in home page
 
