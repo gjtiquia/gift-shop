@@ -180,3 +180,6 @@ notes
 - [x] admin inventory "hide item" control for catalogue
 - [x] shop cart page
 - [x] customer and admin orders pages
+- [ ] proper loading states for any request that takes time (local image processing, server requests)
+- [ ] ui polish
+- [ ] colors
