@@ -1,6 +1,11 @@
 import { html, Html } from "@elysia/html";
 
-export function BaseLayout(props: { children?: JSX.Element | JSX.Element[] }) {
+interface BaseLayoutProps {
+    children?: JSX.Element | JSX.Element[];
+    enableHtmx?: boolean;
+}
+
+export function BaseLayout({ children, enableHtmx }: BaseLayoutProps) {
     const version = process.env.VERSION;
 
     return (
@@ -13,7 +18,9 @@ export function BaseLayout(props: { children?: JSX.Element | JSX.Element[] }) {
                     type="image/svg+xml"
                     href="/public/favicon.svg"
                 />
-                <script src="/public/htmx.min.js"></script>
+                {enableHtmx ? (
+                    <script defer src="/public/htmx.min.js"></script>
+                ) : null}
                 <link
                     rel="stylesheet"
                     href={`/public/styles.css?v=${version}`}
@@ -24,7 +31,7 @@ export function BaseLayout(props: { children?: JSX.Element | JSX.Element[] }) {
                 ></script>
                 <title>Gift Shop</title>
             </head>
-            <body>{props.children}</body>
+            <body>{children}</body>
         </html>
     );
 }

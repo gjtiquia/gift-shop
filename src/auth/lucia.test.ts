@@ -104,6 +104,7 @@ test("a failed login redirects back and displays an error", async () => {
 
     expect(html).toContain("Incorrect password.");
     expect(html).toContain('style="color: red;"');
+    expect(html).not.toContain("/public/htmx.min.js");
 
     const unrelatedErrorPage = await app.handle(
         new Request("http://localhost/admin/login?error=invalid"),
@@ -136,9 +137,12 @@ test("a successful login creates a cookie-backed admin session", async () => {
     expect(adminPage.status).toBe(200);
     const adminHtml = await adminPage.text();
     expect(adminHtml).toContain("Gift Shop - Admin Page");
-    expect(adminHtml).toContain("data-reset-after-success");
-    expect(adminHtml).not.toContain("hx-on--after-request");
-    expect(adminHtml).not.toContain("hx-on--response-error");
+    expect(adminHtml).not.toContain("data-reset-after-success");
+    expect(adminHtml).not.toContain("hx-post=");
+    expect(adminHtml).toContain("/public/index.js");
+    expect(adminHtml).toMatch(
+        /<script[^>]*defer[^>]*src="\/public\/htmx\.min\.js"/,
+    );
     expect(adminPage.headers.get("set-cookie")).toContain("Max-Age=864000");
 
     const loginPage = await app.handle(
@@ -266,7 +270,7 @@ test("inventory mutations require auth and same-origin CSRF metadata", async () 
     );
 });
 
-test("an admin can create, update, and delete inventory", async () => {
+test("an admin can create and update inventory without an image", async () => {
     const loginResponse = await postPassword("correct-password");
     const cookie = loginResponse.headers.get("set-cookie")?.split(";", 1)[0];
     if (!cookie) throw new Error("login did not set a session cookie");
@@ -277,20 +281,24 @@ test("an admin can create, update, and delete inventory", async () => {
         "HX-Request": "true",
         cookie,
     };
+    const createForm = new FormData();
+    createForm.set("name", "Test gift");
+    createForm.set("price", "9.99");
+    createForm.set("quantity", "2");
+    createForm.set("adminNotes", "Fragile");
+    createForm.set("image", new File([], ""));
     const createResponse = await app.handle(
         new Request("http://localhost/api/inventory", {
             method: "POST",
-            headers,
-            body: new URLSearchParams({
-                name: "Test gift",
-                price: "9.99",
-                quantity: "2",
-                adminNotes: "Fragile",
-            }),
+            headers: {
+                "Sec-Fetch-Site": "same-origin",
+                cookie,
+            },
+            body: createForm,
         }),
     );
-    expect(createResponse.status).toBe(201);
-    expect(await createResponse.text()).toContain("Test gift");
+    expect(createResponse.status).toBe(303);
+    expect(createResponse.headers.get("location")).toBe("/admin");
 
     const database = new Database(databasePath);
     const created = database
@@ -300,17 +308,19 @@ test("an admin can create, update, and delete inventory", async () => {
                 name: string;
                 priceCentsX10: number;
                 quantity: number;
+                imageId: number | null;
                 adminNotes: string | null;
             },
             []
         >(
-            "SELECT id, name, priceCentsX10, quantity, adminNotes FROM inventory_table LIMIT 1",
+            "SELECT id, name, priceCentsX10, quantity, imageId, adminNotes FROM inventory_table LIMIT 1",
         )
         .get();
     expect(created).toMatchObject({
         name: "Test gift",
         priceCentsX10: 999,
         quantity: 2,
+        imageId: null,
         adminNotes: "Fragile",
     });
     if (!created) throw new Error("inventory was not created");
@@ -336,17 +346,19 @@ test("an admin can create, update, and delete inventory", async () => {
                     name: string;
                     priceCentsX10: number;
                     quantity: number;
+                    imageId: number | null;
                     adminNotes: string | null;
                 },
                 [number]
             >(
-                "SELECT name, priceCentsX10, quantity, adminNotes FROM inventory_table WHERE id = ?",
+                "SELECT name, priceCentsX10, quantity, imageId, adminNotes FROM inventory_table WHERE id = ?",
             )
             .get(created.id),
     ).toEqual({
         name: "Updated gift",
         priceCentsX10: 1250,
         quantity: 0,
+        imageId: null,
         adminNotes: null,
     });
 
@@ -368,6 +380,7 @@ test("an admin can create, update, and delete inventory", async () => {
         new Request("http://localhost/"),
     );
     const catalogueHtml = await catalogueResponse.text();
+    expect(catalogueHtml).not.toContain("/public/htmx.min.js");
     expect(catalogueHtml).toContain("Updated gift");
     expect(catalogueHtml).toContain("12.50");
     expect(catalogueHtml).toContain("Out of stock");
@@ -376,7 +389,7 @@ test("an admin can create, update, and delete inventory", async () => {
         new Request("http://localhost/admin", { headers: { cookie } }),
     );
     const adminHtml = await adminResponse.text();
-    expect(adminHtml).toContain(`hx-put="/api/inventory/${created.id}"`);
+    expect(adminHtml).not.toContain(`hx-put="/api/inventory/${created.id}"`);
     expect(adminHtml).toContain(`method="post"`);
     expect(adminHtml).toContain(`action="/api/inventory/${created.id}"`);
     expect(adminHtml).toContain(`hx-delete="/api/inventory/${created.id}"`);
@@ -488,6 +501,29 @@ test("an admin can add, replace, remove, and retrieve an inventory image", async
     expect(
         await app.handle(new Request("http://localhost/api/images/999999")),
     ).toMatchObject({ status: 404 });
+
+    const updateWithoutImageResponse = await app.handle(
+        new Request(`http://localhost/api/inventory/${created.id}`, {
+            method: "POST",
+            headers: {
+                "Sec-Fetch-Site": "same-origin",
+                cookie,
+            },
+            body: inventoryForm("Image gift without replacement"),
+        }),
+    );
+    expect(updateWithoutImageResponse.status).toBe(303);
+    expect(updateWithoutImageResponse.headers.get("location")).toBe("/admin");
+    expect(
+        database
+            .query<{ imageId: number }, [number]>(
+                "SELECT imageId FROM inventory_table WHERE id = ?",
+            )
+            .get(created.id)?.imageId,
+    ).toBe(created.imageId);
+    expect(existsSync(join(imageDataDirectory, firstImage.filename))).toBe(
+        true,
+    );
 
     const webp = new Uint8Array([
         0x52, 0x49, 0x46, 0x46, 0x04, 0x00, 0x00, 0x00, 0x57, 0x45, 0x42, 0x50,

@@ -18,9 +18,9 @@ export async function AdminPage({ error }: AdminPageProps = {}) {
         .orderBy(asc(inventoryTable.id));
 
     return (
-        <BaseLayout>
-            <main class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-                <header class="mb-8 flex flex-wrap items-center justify-between gap-3">
+        <BaseLayout enableHtmx>
+            <main class="mx-auto grid max-w-7xl gap-6 px-4 py-6 sm:px-6 lg:px-8">
+                <header class="flex flex-wrap items-center justify-between gap-3">
                     <h1 class="text-2xl font-semibold text-gray-950">
                         Gift Shop - Admin Page
                     </h1>
@@ -34,14 +34,14 @@ export async function AdminPage({ error }: AdminPageProps = {}) {
 
                 <p
                     id="inventory-error"
-                    class="mb-4 min-h-6 text-sm font-medium text-red-700"
+                    class="min-h-6 text-sm font-medium text-red-700"
                     role="alert"
                 >
                     {error ?? ""}
                 </p>
 
-                <section class="mb-10 rounded-lg border border-gray-200 bg-gray-50 p-4 sm:p-6">
-                    <h2 class="mb-4 text-xl font-semibold text-gray-950">
+                <section class="grid gap-4 rounded-lg border border-gray-200 bg-gray-50 p-4 sm:p-6">
+                    <h2 class="text-xl font-semibold text-gray-950">
                         Add inventory
                     </h2>
                     <form
@@ -49,11 +49,6 @@ export async function AdminPage({ error }: AdminPageProps = {}) {
                         method="post"
                         action="/api/inventory"
                         enctype="multipart/form-data"
-                        hx-post="/api/inventory"
-                        hx-encoding="multipart/form-data"
-                        hx-target="#inventory-table-body"
-                        hx-swap="beforeend"
-                        data-reset-after-success
                     >
                         <label class="grid gap-1 text-sm font-medium text-gray-800">
                             Name
@@ -85,23 +80,14 @@ export async function AdminPage({ error }: AdminPageProps = {}) {
                             <input class={inputClasses} name="adminNotes" />
                         </label>
                         <label class="grid gap-1 text-sm font-medium text-gray-800 sm:col-span-2 lg:col-span-5">
-                            Take photo or choose image
+                            Take photo or choose image (optional)
                             <input
                                 class="block w-full text-sm file:mr-3 file:rounded-md file:border-0 file:bg-gray-200 file:px-3 file:py-2 file:font-medium"
                                 type="file"
                                 name="image"
-                                accept="image/*"
-                                data-image-input
-                                data-image-preview="new-inventory-image-preview"
+                                accept="image/jpeg,image/png,image/webp"
                             />
                         </label>
-                        <img
-                            id="new-inventory-image-preview"
-                            class="hidden aspect-4/3 h-24 rounded-md object-cover sm:col-span-2 lg:col-span-5"
-                            width="128"
-                            height="96"
-                            alt="Selected inventory image preview"
-                        />
                         <button
                             class="w-full rounded-md bg-gray-950 px-4 py-2 font-medium text-white sm:w-fit"
                             type="submit"
@@ -111,8 +97,8 @@ export async function AdminPage({ error }: AdminPageProps = {}) {
                     </form>
                 </section>
 
-                <section>
-                    <h2 class="mb-4 text-xl font-semibold text-gray-950">
+                <section class="grid gap-4">
+                    <h2 class="text-xl font-semibold text-gray-950">
                         Inventory
                     </h2>
                     <div class="overflow-x-auto rounded-lg border border-gray-200">

@@ -27,6 +27,5 @@
         "concurrently": "^10.0.4",
         "prettier": "^3.9.6",
         "tailwindcss": "^4.3.3"
-    },
-    "module": "src/index.js"
+    }
 }

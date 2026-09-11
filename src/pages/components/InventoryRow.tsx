@@ -15,9 +15,6 @@ const tableInputClasses =
 
 export function InventoryRow({ item }: { item: InventoryItem }) {
     const updateFormId = `update-inventory-${item.id}`;
-    const previewId = `inventory-image-preview-${item.id}`;
-    const currentImageId = `inventory-current-image-${item.id}`;
-    const removeImageId = `remove-inventory-image-${item.id}`;
 
     return (
         <tr id={`inventory-${item.id}`} class="align-top">
@@ -26,7 +23,6 @@ export function InventoryRow({ item }: { item: InventoryItem }) {
                 <div class="grid w-40 gap-2">
                     {item.imageId !== null ? (
                         <img
-                            id={currentImageId}
                             class="aspect-4/3 w-24 rounded-md bg-gray-100 object-cover"
                             src={`/api/images/${item.imageId}`}
                             width="128"
@@ -37,45 +33,25 @@ export function InventoryRow({ item }: { item: InventoryItem }) {
                     ) : (
                         <span class="text-xs text-gray-500">No image</span>
                     )}
-                    <img
-                        id={previewId}
-                        class="hidden aspect-4/3 w-24 rounded-md bg-gray-100 object-cover"
-                        width="128"
-                        height="96"
-                        alt={`Selected image preview for ${item.name}`}
-                    />
                     <label class="grid gap-1 text-xs font-medium text-gray-700">
-                        {item.imageId === null ? "Add image" : "Replace image"}
+                        {item.imageId === null
+                            ? "Add image (optional)"
+                            : "Replace image (optional)"}
                         <input
                             class="block w-full text-xs file:mb-1 file:rounded file:border-0 file:bg-gray-200 file:px-2 file:py-1"
                             form={updateFormId}
                             type="file"
                             name="image"
-                            accept="image/*"
-                            data-image-input
-                            data-image-preview={previewId}
-                            data-current-image={
-                                item.imageId === null
-                                    ? undefined
-                                    : currentImageId
-                            }
-                            data-remove-image={
-                                item.imageId === null
-                                    ? undefined
-                                    : removeImageId
-                            }
+                            accept="image/jpeg,image/png,image/webp"
                         />
                     </label>
                     {item.imageId !== null ? (
                         <label class="flex items-center gap-2 text-xs text-gray-700">
                             <input
-                                id={removeImageId}
                                 form={updateFormId}
                                 type="checkbox"
                                 name="removeImage"
                                 value="1"
-                                data-remove-image-control
-                                data-current-image={currentImageId}
                             />
                             Remove image
                         </label>
@@ -132,10 +108,6 @@ export function InventoryRow({ item }: { item: InventoryItem }) {
                         method="post"
                         action={`/api/inventory/${item.id}`}
                         enctype="multipart/form-data"
-                        hx-put={`/api/inventory/${item.id}`}
-                        hx-encoding="multipart/form-data"
-                        hx-target="closest tr"
-                        hx-swap="outerHTML"
                     >
                         <button
                             class="w-full rounded-md bg-gray-950 px-3 py-2 font-medium text-white"

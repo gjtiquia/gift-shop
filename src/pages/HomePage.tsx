@@ -17,8 +17,8 @@ export async function HomePage() {
 
     return (
         <BaseLayout>
-            <main class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-                <header class="mb-8">
+            <main class="mx-auto grid max-w-7xl gap-8 px-4 py-8 sm:px-6 lg:px-8">
+                <header>
                     <h1 class="text-3xl font-semibold tracking-tight text-gray-950">
                         Gift Shop - Catalogue
                     </h1>
