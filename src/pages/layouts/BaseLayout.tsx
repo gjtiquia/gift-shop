@@ -2,10 +2,9 @@ import { html, Html } from "@elysia/html";
 
 interface BaseLayoutProps {
     children?: JSX.Element | JSX.Element[];
-    enableHtmx?: boolean;
 }
 
-export function BaseLayout({ children, enableHtmx }: BaseLayoutProps) {
+export function BaseLayout({ children }: BaseLayoutProps) {
     const version = process.env.VERSION;
 
     return (
@@ -18,9 +17,7 @@ export function BaseLayout({ children, enableHtmx }: BaseLayoutProps) {
                     type="image/svg+xml"
                     href="/public/favicon.svg"
                 />
-                {enableHtmx ? (
-                    <script defer src="/public/htmx.min.js"></script>
-                ) : null}
+                <script defer src="/public/htmx.min.js"></script>
                 <link
                     rel="stylesheet"
                     href={`/public/styles.css?v=${version}`}

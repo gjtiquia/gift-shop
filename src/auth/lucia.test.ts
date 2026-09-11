@@ -104,7 +104,7 @@ test("a failed login redirects back and displays an error", async () => {
 
     expect(html).toContain("Incorrect password.");
     expect(html).toContain('style="color: red;"');
-    expect(html).not.toContain("/public/htmx.min.js");
+    expect(html).toContain("/public/htmx.min.js");
 
     const unrelatedErrorPage = await app.handle(
         new Request("http://localhost/admin/login?error=invalid"),
@@ -380,7 +380,7 @@ test("an admin can create and update inventory without an image", async () => {
         new Request("http://localhost/"),
     );
     const catalogueHtml = await catalogueResponse.text();
-    expect(catalogueHtml).not.toContain("/public/htmx.min.js");
+    expect(catalogueHtml).toContain("/public/htmx.min.js");
     expect(catalogueHtml).toContain("Updated gift");
     expect(catalogueHtml).toContain("12.50");
     expect(catalogueHtml).toContain("Out of stock");

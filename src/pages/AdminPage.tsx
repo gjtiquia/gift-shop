@@ -18,7 +18,7 @@ export async function AdminPage({ error }: AdminPageProps = {}) {
         .orderBy(asc(inventoryTable.id));
 
     return (
-        <BaseLayout enableHtmx>
+        <BaseLayout>
             <main class="mx-auto grid max-w-7xl gap-6 px-4 py-6 sm:px-6 lg:px-8">
                 <header class="flex flex-wrap items-center justify-between gap-3">
                     <h1 class="text-2xl font-semibold text-gray-950">
