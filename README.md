@@ -200,6 +200,9 @@ notes
 - [x] admin inventory "hide item" control for catalogue
 - [x] shop cart page
 - [x] customer and admin orders pages
+- [ ] major refactor - server side cart, server assigns a random id on load if browser local storage has no cart id. kind of like an "automatic login"
+- [ ] bulletproof backend audit
+- [ ] overengineering frontend audit
 - [ ] proper loading states for any request that takes time (local image processing, server requests)
 - [ ] ui polish
 - [ ] colors
