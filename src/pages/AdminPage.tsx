@@ -86,6 +86,7 @@ export async function AdminPage({ error }: AdminPageProps = {}) {
                                 type="file"
                                 name="image"
                                 accept="image/jpeg,image/png,image/webp"
+                                data-js-imagePreview
                                 data-image-preview="new-inventory-image-preview"
                                 data-image-filename="new-inventory-image-filename"
                             />
@@ -112,7 +113,11 @@ export async function AdminPage({ error }: AdminPageProps = {}) {
                     </form>
                 </section>
 
-                <section id="inventory-section" class="grid gap-4">
+                <section
+                    id="inventory-section"
+                    class="grid gap-4"
+                    data-js-inventoryEditor
+                >
                     <div class="flex flex-wrap items-center justify-between gap-3">
                         <h2 class="text-xl font-semibold text-gray-950">
                             Inventory

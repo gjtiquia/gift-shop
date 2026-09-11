@@ -64,6 +64,7 @@ export function InventoryRow({ item }: { item: InventoryItem }) {
                             type="file"
                             name="image"
                             accept="image/jpeg,image/png,image/webp"
+                            data-js-imagePreview
                             data-image-preview={imagePreviewId}
                             data-image-filename={imageFilenameId}
                             data-image-empty={noImageId}
