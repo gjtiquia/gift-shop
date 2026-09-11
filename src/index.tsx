@@ -9,8 +9,6 @@ if (!process.env.VERSION) {
     ).trim();
 }
 
-process.env.ASSET_VERSION = `${process.env.VERSION}-${Date.now()}`;
-
 console.log("🦊 VERSION", process.env.VERSION);
 
 const app = new Elysia()

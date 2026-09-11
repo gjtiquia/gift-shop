@@ -5,7 +5,7 @@ interface BaseLayoutProps {
 }
 
 export function BaseLayout({ children }: BaseLayoutProps) {
-    const version = process.env.ASSET_VERSION ?? process.env.VERSION;
+    const version = process.env.VERSION;
 
     return (
         <html lang="en">
