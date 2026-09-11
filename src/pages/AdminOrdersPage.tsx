@@ -33,10 +33,16 @@ export function AdminOrdersPage({ orders }: { orders: OrderView[] }) {
                     >
                         Catalogue
                     </a>
-                    <form method="post" action="/auth/logout">
+                    <form
+                        method="post"
+                        action="/auth/logout"
+                        data-native-pending
+                        aria-busy="false"
+                    >
                         <button
                             class="rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-800 hover:bg-gray-100"
                             type="submit"
+                            data-pending-label="Logging out…"
                         >
                             Log out
                         </button>

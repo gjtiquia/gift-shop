@@ -31,7 +31,7 @@ export function CartPage({
             }
         >
             <section class="grid gap-6">
-                <div id="cart-region">
+                <div id="cart-region" data-loading-region aria-busy="false">
                     <CartContents
                         items={items}
                         submissionId={crypto.randomUUID()}

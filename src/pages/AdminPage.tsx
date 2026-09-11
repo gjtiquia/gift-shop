@@ -37,10 +37,16 @@ export async function AdminPage({ error }: AdminPageProps = {}) {
                     >
                         Catalogue
                     </a>
-                    <form method="post" action="/auth/logout">
+                    <form
+                        method="post"
+                        action="/auth/logout"
+                        data-native-pending
+                        aria-busy="false"
+                    >
                         <button
                             class="rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-800 hover:bg-gray-100"
                             type="submit"
+                            data-pending-label="Logging out…"
                         >
                             Log out
                         </button>
@@ -66,6 +72,8 @@ export async function AdminPage({ error }: AdminPageProps = {}) {
                     method="post"
                     action="/api/inventory"
                     enctype="multipart/form-data"
+                    data-native-pending
+                    aria-busy="false"
                 >
                     <label class="grid gap-1 text-sm font-medium text-gray-800">
                         Name
@@ -111,6 +119,9 @@ export async function AdminPage({ error }: AdminPageProps = {}) {
                     </label>
                     <label class="grid gap-2 text-sm font-medium text-gray-800 sm:col-span-2 lg:col-span-5">
                         Take photo or choose image (optional)
+                        <span class="text-xs font-normal text-gray-600">
+                            JPEG, PNG, or WebP; maximum 5 MB.
+                        </span>
                         <input
                             class="block w-full text-sm file:mr-3 file:rounded-md file:border-0 file:bg-gray-200 file:px-3 file:py-2 file:font-medium"
                             type="file"
@@ -137,6 +148,7 @@ export async function AdminPage({ error }: AdminPageProps = {}) {
                     <button
                         class="w-full rounded-md bg-gray-950 px-4 py-2 font-medium text-white sm:w-fit"
                         type="submit"
+                        data-pending-label="Adding…"
                     >
                         Add
                     </button>
@@ -152,13 +164,25 @@ export async function AdminPage({ error }: AdminPageProps = {}) {
                     hx-post="/api/inventory/bulk"
                     hx-target="#inventory-table-body"
                     hx-swap="outerHTML"
+                    hx-disable="findAll :is(button,input,textarea,select)"
                     data-htmx-error="#inventory-error"
+                    data-loading-region
                     data-js-inventoryBulkForm
+                    aria-busy="false"
                 >
                     <div class="flex flex-wrap items-center justify-between gap-3">
-                        <h2 class="text-xl font-semibold text-gray-950">
-                            Inventory
-                        </h2>
+                        <div>
+                            <h2 class="text-xl font-semibold text-gray-950">
+                                Inventory
+                            </h2>
+                            <p
+                                class="text-sm text-gray-600"
+                                data-region-pending
+                                role="status"
+                            >
+                                Saving inventory…
+                            </p>
+                        </div>
                         <div class="flex flex-wrap gap-2">
                             <button
                                 class="rounded-md bg-gray-950 px-4 py-2 font-medium text-white"
@@ -168,12 +192,13 @@ export async function AdminPage({ error }: AdminPageProps = {}) {
                                 Edit
                             </button>
                             <button
-                                class="rounded-md bg-gray-950 px-4 py-2 font-medium text-white"
+                                class="rounded-md bg-gray-950 px-4 py-2 font-medium text-white disabled:bg-gray-400"
                                 data-js-inventorySave
                                 type="submit"
                                 hidden
                             >
-                                Save changes
+                                <span data-idle-label>Save changes</span>
+                                <span data-pending-label>Saving…</span>
                             </button>
                             <button
                                 class="rounded-md border border-gray-300 px-4 py-2 font-medium text-gray-800"

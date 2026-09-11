@@ -29,10 +29,26 @@ export const orders = new Elysia({ prefix: "orders" })
             );
             const result = await checkoutCart(visitor.id, body);
             if (result.status === "invalid") {
+                if (isHtmxRequest(request)) {
+                    return new Response(result.message, {
+                        status: 422,
+                        headers: {
+                            "content-type": "text/plain; charset=utf-8",
+                            "HX-Retarget": "#cart-error",
+                            "HX-Reswap": "textContent",
+                        },
+                    });
+                }
                 return redirect(
                     `/cart?error=checkout&message=${encodeURIComponent(result.message)}`,
                     303,
                 );
+            }
+            if (isHtmxRequest(request)) {
+                return new Response(null, {
+                    status: 200,
+                    headers: { "HX-Redirect": `/orders/${result.order.id}` },
+                });
             }
             return redirect(`/orders/${result.order.id}`, 303);
         },
@@ -123,6 +139,10 @@ export const orders = new Elysia({ prefix: "orders" })
             303,
         );
     });
+
+function isHtmxRequest(request: Request) {
+    return request.headers.get("HX-Request") === "true";
+}
 
 async function rejectInvalidAdminMutation(
     request: Request,

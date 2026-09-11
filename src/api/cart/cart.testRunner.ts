@@ -174,6 +174,9 @@ assert.match(firstCartHtml, /id="cart-region"/);
 assert.match(firstCartHtml, /name="submissionId"/);
 assert.match(firstCartHtml, /hx-target="#cart-region"/);
 assert.match(firstCartHtml, /#cart-region:queue all/);
+assert.match(firstCartHtml, /hx-post="\/api\/orders"/);
+assert.match(firstCartHtml, /data-loading-region/);
+assert.match(firstCartHtml, /Submitting order/);
 
 await db
     .update(visitorSessionsTable)
@@ -227,6 +230,16 @@ await db
     .update(inventoryTable)
     .set({ quantity: 2, lastModifiedAt: new Date() })
     .where(eq(inventoryTable.id, inventory.id));
+const failedHtmxCheckout = await request("/api/orders", {
+    method: "POST",
+    cookie: firstCookie,
+    form: { customerName: "Kid One", submissionId: crypto.randomUUID() },
+    htmx: true,
+});
+assert.equal(failedHtmxCheckout.status, 422);
+assert.equal(failedHtmxCheckout.headers.get("HX-Retarget"), "#cart-error");
+assert.equal(failedHtmxCheckout.headers.get("HX-Reswap"), "textContent");
+assert.match(await failedHtmxCheckout.text(), /only 2 available/);
 const failedCheckout = await request("/api/orders", {
     method: "POST",
     cookie: firstCookie,
@@ -330,6 +343,28 @@ assert.equal(
             .where(eq(cartItemsTable.visitorId, visitorId(secondCookie)))
     )[0]?.quantity,
     1,
+);
+
+const secondSubmissionId = crypto.randomUUID();
+const htmxCheckout = await request("/api/orders", {
+    method: "POST",
+    cookie: secondCookie,
+    form: { customerName: "Kid Two", submissionId: secondSubmissionId },
+    htmx: true,
+});
+assert.equal(htmxCheckout.status, 200);
+assert.match(
+    htmxCheckout.headers.get("HX-Redirect") ?? "",
+    /^\/orders\/[0-9a-f-]{36}$/i,
+);
+assert.equal(
+    (
+        await db
+            .select()
+            .from(cartItemsTable)
+            .where(eq(cartItemsTable.visitorId, visitorId(secondCookie)))
+    ).length,
+    0,
 );
 
 const firstHistory = await request("/orders", { cookie: firstCookie });

@@ -20,7 +20,13 @@ export async function AdminLoginPage({ error }: AdminLoginPageProps = {}) {
             }
         >
             <section class="rounded-lg border border-gray-200 bg-white p-4 shadow-sm sm:p-6">
-                <form class="grid gap-4" method="post" action="/auth/login">
+                <form
+                    class="grid gap-4"
+                    method="post"
+                    action="/auth/login"
+                    data-native-pending
+                    aria-busy="false"
+                >
                     <label class="grid gap-1 text-sm font-medium text-gray-800">
                         Password
                         <input
@@ -45,6 +51,7 @@ export async function AdminLoginPage({ error }: AdminLoginPageProps = {}) {
                     <button
                         class="w-full rounded-md bg-gray-950 px-4 py-2 font-medium text-white sm:w-fit"
                         type="submit"
+                        data-pending-label="Signing in…"
                     >
                         Sign in
                     </button>

@@ -160,6 +160,8 @@ export function InventoryRow({ item }: { item: InventoryItem }) {
                     hx-delete={`/api/inventory/${item.id}`}
                     hx-target="closest tr"
                     hx-swap="delete"
+                    hx-sync="closest form:drop"
+                    hx-disable="this"
                     hx-confirm="Delete this item?"
                 >
                     Delete

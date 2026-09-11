@@ -81,7 +81,7 @@ function setupInventoryEditor(section) {
     const error = errorSelector ? document.querySelector(errorSelector) : null;
     if (error)
       error.textContent = "";
-    setEditMode(false);
+    queueMicrotask(() => setEditMode(false));
   });
   function setEditMode(enabled) {
     for (const input of section.querySelectorAll("[data-js-inventoryField]")) {
@@ -163,9 +163,88 @@ function showUnexpectedError(event, context) {
   if (!selector)
     return;
   const error = document.querySelector(selector);
-  if (error)
-    error.textContent = "Could not complete the request. Try again.";
+  if (error) {
+    error.textContent = "Could not confirm the result. Refresh the page before trying again.";
+  }
 }
 function htmxContext(event) {
+  return event.detail?.ctx;
+}
+
+// src/pages/scripts/pendingStates.ts
+var requestRegions = new WeakMap;
+var activeRequests = new WeakMap;
+document.addEventListener("htmx:before:request", (event) => {
+  const context = htmxContext2(event);
+  const source = context?.sourceElement;
+  const region = source?.closest("[data-loading-region]");
+  if (!context || !region)
+    return;
+  requestRegions.set(context, region);
+  const count = (activeRequests.get(region) ?? 0) + 1;
+  activeRequests.set(region, count);
+  setRegionPending(region, true);
+});
+document.addEventListener("htmx:finally:request", (event) => {
+  const context = htmxContext2(event);
+  if (!context)
+    return;
+  const region = requestRegions.get(context);
+  if (!region)
+    return;
+  requestRegions.delete(context);
+  const count = Math.max(0, (activeRequests.get(region) ?? 1) - 1);
+  if (count > 0) {
+    activeRequests.set(region, count);
+    return;
+  }
+  activeRequests.delete(region);
+  setRegionPending(region, false);
+});
+document.addEventListener("click", (event) => {
+  const target = event.target;
+  if (!(target instanceof Element))
+    return;
+  const link = target.closest("a[data-pending-navigation-disabled]");
+  if (link)
+    event.preventDefault();
+});
+document.addEventListener("submit", (event) => {
+  if (event.defaultPrevented)
+    return;
+  const form = event.target;
+  if (!(form instanceof HTMLFormElement) || !form.hasAttribute("data-native-pending")) {
+    return;
+  }
+  if (form.dataset.submitting === "true") {
+    event.preventDefault();
+    return;
+  }
+  form.dataset.submitting = "true";
+  form.setAttribute("aria-busy", "true");
+  const submitter = event.submitter;
+  if (!(submitter instanceof HTMLButtonElement))
+    return;
+  submitter.disabled = true;
+  const pendingLabel = submitter.dataset.pendingLabel;
+  if (pendingLabel)
+    submitter.textContent = pendingLabel;
+});
+function setRegionPending(region, pending) {
+  region.setAttribute("aria-busy", String(pending));
+  const selector = region.dataset.pendingNavigation;
+  if (!selector)
+    return;
+  for (const link of document.querySelectorAll(selector)) {
+    if (pending) {
+      link.setAttribute("aria-disabled", "true");
+      link.setAttribute("data-pending-navigation-disabled", "");
+    } else {
+      link.removeAttribute("aria-disabled");
+      link.removeAttribute("data-pending-navigation-disabled");
+    }
+  }
+}
+function htmxContext2(event) {
   return event.detail?.ctx;
 }

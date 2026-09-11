@@ -34,7 +34,9 @@ function setupInventoryEditor(section: HTMLElement) {
             ? document.querySelector<HTMLElement>(errorSelector)
             : null;
         if (error) error.textContent = "";
-        setEditMode(false);
+        // HTMX restores hx-disabled controls after dispatching HX-Trigger.
+        // Apply view mode after that restoration so edit-only inputs stay disabled.
+        queueMicrotask(() => setEditMode(false));
     });
 
     function setEditMode(enabled: boolean) {

@@ -19,6 +19,9 @@ export function CartContents({
 
     return (
         <div id="cart-contents" class="grid gap-4">
+            <p class="text-sm text-gray-600" data-region-pending role="status">
+                Updating cart…
+            </p>
             <p
                 id="cart-error"
                 class="font-medium text-red-700 empty:hidden"
@@ -62,6 +65,7 @@ export function CartContents({
                                         hx-target="#cart-region"
                                         hx-swap="innerHTML"
                                         hx-sync="#cart-region:queue all"
+                                        hx-disable="global #cart-region :is(button,input)"
                                         data-htmx-error="#cart-error"
                                     >
                                         <button
@@ -81,6 +85,7 @@ export function CartContents({
                                         hx-target="#cart-region"
                                         hx-swap="innerHTML"
                                         hx-sync="#cart-region:queue all"
+                                        hx-disable="global #cart-region :is(button,input)"
                                         data-htmx-error="#cart-error"
                                     >
                                         <input
@@ -109,6 +114,7 @@ export function CartContents({
                                         hx-target="#cart-region"
                                         hx-swap="innerHTML"
                                         hx-sync="#cart-region:queue all"
+                                        hx-disable="global #cart-region :is(button,input)"
                                         data-htmx-error="#cart-error"
                                     >
                                         <button
@@ -131,6 +137,7 @@ export function CartContents({
                                     hx-target="#cart-region"
                                     hx-swap="innerHTML"
                                     hx-sync="#cart-region:queue all"
+                                    hx-disable="global #cart-region :is(button,input)"
                                     data-htmx-error="#cart-error"
                                 >
                                     <button
@@ -151,6 +158,10 @@ export function CartContents({
                         class="grid max-w-md gap-4 rounded-lg border border-gray-200 bg-white p-4 shadow-sm"
                         method="post"
                         action="/api/orders"
+                        hx-post="/api/orders"
+                        hx-sync="#cart-region:queue all"
+                        hx-disable="global #cart-region :is(button,input)"
+                        data-htmx-error="#cart-error"
                         onsubmit="return confirm('Submit this order?')"
                     >
                         <input
@@ -173,7 +184,8 @@ export function CartContents({
                             class="rounded-md bg-gray-950 px-4 py-2 font-medium text-white disabled:bg-gray-400"
                             type="submit"
                         >
-                            Submit order
+                            <span data-idle-label>Submit order</span>
+                            <span data-pending-label>Submitting order…</span>
                         </button>
                     </form>
                 </>

@@ -1,1 +1,29 @@
 @import "tailwindcss";
+
+@layer components {
+    [data-pending-label],
+    [data-region-pending] {
+        display: none;
+    }
+
+    .htmx-request [data-idle-label] {
+        display: none;
+    }
+
+    .htmx-request [data-pending-label] {
+        display: inline;
+    }
+
+    [data-loading-region][aria-busy="true"] [data-region-pending] {
+        display: block;
+    }
+
+    [data-native-pending][aria-busy="true"] {
+        cursor: wait;
+    }
+
+    [data-pending-navigation-disabled] {
+        cursor: wait;
+        opacity: 0.6;
+    }
+}

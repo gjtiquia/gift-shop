@@ -29,7 +29,10 @@ function showUnexpectedError(
     if (!selector) return;
 
     const error = document.querySelector<HTMLElement>(selector);
-    if (error) error.textContent = "Could not complete the request. Try again.";
+    if (error) {
+        error.textContent =
+            "Could not confirm the result. Refresh the page before trying again.";
+    }
 }
 
 function htmxContext(event: Event) {

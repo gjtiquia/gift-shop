@@ -38,10 +38,16 @@ export function AdminOrderPage({
                     >
                         Inventory
                     </a>
-                    <form method="post" action="/auth/logout">
+                    <form
+                        method="post"
+                        action="/auth/logout"
+                        data-native-pending
+                        aria-busy="false"
+                    >
                         <button
                             class="rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-800 hover:bg-gray-100"
                             type="submit"
+                            data-pending-label="Logging out…"
                         >
                             Log out
                         </button>
@@ -77,6 +83,7 @@ export function AdminOrderPage({
                             class="rounded-md bg-gray-950 px-4 py-2 font-medium text-white"
                             type="submit"
                             form="order-edit-form"
+                            data-pending-label="Saving…"
                             data-js-orderSave
                             hidden
                         >
@@ -98,6 +105,8 @@ export function AdminOrderPage({
                     class="grid gap-5"
                     method="post"
                     action={`/api/orders/${order.id}/edit`}
+                    data-native-pending
+                    aria-busy="false"
                     data-js-orderEditForm
                 >
                     <dl
@@ -422,11 +431,14 @@ export function AdminOrderPage({
                         <form
                             method="post"
                             action={`/api/orders/${order.id}/fulfill`}
+                            data-native-pending
+                            aria-busy="false"
                             onsubmit="return confirm('Fulfill this order and deduct its existing items from inventory?')"
                         >
                             <button
                                 class="rounded-md bg-green-700 px-4 py-2 font-medium text-white"
                                 type="submit"
+                                data-pending-label="Fulfilling…"
                             >
                                 Fulfill
                             </button>
@@ -434,11 +446,14 @@ export function AdminOrderPage({
                         <form
                             method="post"
                             action={`/api/orders/${order.id}/reject`}
+                            data-native-pending
+                            aria-busy="false"
                             onsubmit="return confirm('Reject this order?')"
                         >
                             <button
                                 class="rounded-md border border-red-300 px-4 py-2 font-medium text-red-700"
                                 type="submit"
+                                data-pending-label="Rejecting…"
                             >
                                 Reject
                             </button>
@@ -448,11 +463,14 @@ export function AdminOrderPage({
                     <form
                         method="post"
                         action={`/api/orders/${order.id}/restore`}
+                        data-native-pending
+                        aria-busy="false"
                         onsubmit="return confirm('Restore this order to unfulfilled?')"
                     >
                         <button
                             class="rounded-md border border-gray-300 px-4 py-2 font-medium text-gray-800"
                             type="submit"
+                            data-pending-label="Restoring…"
                         >
                             Restore to unfulfilled
                         </button>
