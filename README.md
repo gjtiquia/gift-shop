@@ -1,5 +1,24 @@
 # gift-shop
 
+## overview
+
+- we have admins and users
+- for simplicity, all admins share a single admin account with a single admin password
+- for simplicity, users no need to sign up for accounts, tho they are required to write their names at the end of their purchase
+- admin fills in inventory (name, price, quantity, optional photo, optional notes)
+- users browse thru catalogue in home page
+    - showing the name, price, remaining quantity, photo
+- catalogue will show "out of stock" if not enough quantity
+- users can add to cart
+- add to cart should follow some logic like checking if there really is that much quantity left
+- after adding to cart, users can go to an order page
+- users then submit their order
+- admin can check the pending orders, and "fulfill" them once the goods and money is exchanged
+- admin can also note down optional arbitrary notes on the orders
+- once the order is fulfilled, inventory should update automatically
+- order history should be preserved
+- this assumes an in-real-life cash/coupon style shop, where this online catalogue is to help facilitate that experience
+
 ## setup
 
 ```bash
@@ -137,3 +156,4 @@ notes
 - [ ] shop cart page
 - [ ] orders page
 - [ ] admin button in home page
+
