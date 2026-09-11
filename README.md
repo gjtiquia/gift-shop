@@ -112,8 +112,18 @@ notes
 - at the same time, we dont have "users", just a single "admin"
 - so we can reference the implementation and create a super simplified version of it
 
-## codes conventions
+## code conventions
+
+### general
+- avoid over-engineering
+- keep things minimal and simple
+- use browser defaults as much as possible
+
+### typescript
 - function ordering, as pragmatic as possible, order from high level to low level functions, so it reads nicely
+
+### tailwind classes
+- avoid margins as much as pragmatically possible
 
 ## todos
 
