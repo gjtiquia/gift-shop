@@ -140,6 +140,11 @@ notes
 
 - we bundle it using Bun (see `package.json` and `/src/pages/scripts/index.ts`)
 
+#### htmx
+
+- Patterns: https://four.htmx.org/patterns
+    - Lazy Load: https://four.htmx.org/patterns/lazy-load
+
 ## code conventions
 
 ### general
