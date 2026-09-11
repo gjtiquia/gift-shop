@@ -45,6 +45,12 @@ async function updateAuthSessionLastVerifiedAtInDatabase(
         .where(eq(authSessionsTable.id, authSession.id));
 }
 
+export async function deleteAuthSession(authSessionId: string) {
+    await db
+        .delete(authSessionsTable)
+        .where(eq(authSessionsTable.id, authSessionId));
+}
+
 // ---
 
 /*

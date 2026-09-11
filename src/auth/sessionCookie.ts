@@ -22,6 +22,21 @@ export function setAuthSessionCookie(
     });
 }
 
+export function clearAuthSessionCookie(
+    cookie: Cookie<unknown>,
+    request: Request,
+) {
+    cookie.set({
+        value: "",
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: isSecureRequest(request),
+        maxAge: 0,
+        expires: new Date(0),
+    });
+}
+
 export async function validateAuthSessionCookie(
     cookie: Cookie<unknown>,
     request: Request,

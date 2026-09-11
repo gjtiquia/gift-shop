@@ -164,7 +164,7 @@ notes
 - [x] setup tailwind
 - [x] image uploading (JPEG, PNG, or WebP up to 5 MB)
 - [x] admin inventory "edit mode" toggle, and then save
-- [ ] admin logout button
+- [x] admin logout button
 - [ ] admin button in home page
 - [ ] admin inventory "hide item" button from catalogue button (would need to add hidden field in schema)
 - [ ] shop cart page

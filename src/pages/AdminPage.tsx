@@ -24,12 +24,22 @@ export async function AdminPage({ error }: AdminPageProps = {}) {
                     <h1 class="text-2xl font-semibold text-gray-950">
                         Gift Shop - Admin Page
                     </h1>
-                    <a
-                        class="text-sm font-medium text-blue-700 underline"
-                        href="/"
-                    >
-                        View catalogue
-                    </a>
+                    <div class="flex items-center gap-3">
+                        <a
+                            class="text-sm font-medium text-blue-700 underline"
+                            href="/"
+                        >
+                            View catalogue
+                        </a>
+                        <form method="post" action="/auth/logout">
+                            <button
+                                class="rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-800"
+                                type="submit"
+                            >
+                                Log out
+                            </button>
+                        </form>
+                    </div>
                 </header>
 
                 <p

@@ -171,6 +171,50 @@ test("a successful login creates a cookie-backed admin session", async () => {
     expect(loginPage.headers.get("location")).toBe("/admin");
 });
 
+test("an admin can log out", async () => {
+    const { authSessionToken } = await createAuthSession("admin");
+    const cookie = `auth_session=${encodeURIComponent(authSessionToken)}`;
+
+    const adminPage = await app.handle(
+        new Request("http://localhost/admin", { headers: { cookie } }),
+    );
+    expect(await adminPage.text()).toContain('action="/auth/logout"');
+
+    const logoutResponse = await app.handle(
+        new Request("http://localhost/auth/logout", {
+            method: "POST",
+            headers: { cookie, "Sec-Fetch-Site": "same-origin" },
+        }),
+    );
+
+    expect(logoutResponse.status).toBe(303);
+    expect(logoutResponse.headers.get("location")).toBe("/admin/login");
+    expect(logoutResponse.headers.get("set-cookie")).toContain("Max-Age=0");
+    expect(await validateAuthSessionToken(authSessionToken)).toBeNull();
+
+    const loggedOutAdminPage = await app.handle(
+        new Request("http://localhost/admin", { headers: { cookie } }),
+    );
+    expect(loggedOutAdminPage.status).toBe(302);
+    expect(loggedOutAdminPage.headers.get("location")).toBe("/admin/login");
+});
+
+test("logout rejects requests without same-origin CSRF metadata", async () => {
+    const { authSessionToken } = await createAuthSession("admin");
+    const response = await app.handle(
+        new Request("http://localhost/auth/logout", {
+            method: "POST",
+            headers: {
+                cookie: `auth_session=${encodeURIComponent(authSessionToken)}`,
+                "Sec-Fetch-Site": "cross-site",
+            },
+        }),
+    );
+
+    expect(response.status).toBe(403);
+    expect(await validateAuthSessionToken(authSessionToken)).not.toBeNull();
+});
+
 test("session cookies are secure for HTTPS", async () => {
     const httpsResponse = await postPassword(
         "correct-password",
