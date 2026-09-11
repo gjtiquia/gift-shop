@@ -151,9 +151,11 @@ notes
 
 ### general
 
+- user experience guides all decisions
 - avoid over-engineering
 - keep things minimal and simple
-- use browser defaults as much as possible
+- use browser defaults and server rendering as much as possible, followed by htmx, followed by frontend js
+    - tho user experience is king. eg. a UI loading state if needs frontend js, then let it be
 
 ### typescript
 
