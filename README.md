@@ -147,6 +147,9 @@ notes
 ### tailwind classes
 - avoid margins as much as pragmatically possible
 
+## troubleshooting
+- beware of html/js/css caching, we use git SHA to invalidate cache, try commiting things arent working (especially frontend scripts)
+
 ## todos
 
 - [x] startup test if schema is valid
