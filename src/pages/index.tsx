@@ -6,6 +6,7 @@ import { db, inventoryTable } from "../db";
 import {
     getAdminOrders,
     getOrder,
+    getVisitorOrder,
     getVisitorOrders,
     isOrderId,
 } from "../api/orders/service";
@@ -23,7 +24,7 @@ import {
     validateAuthSessionCookie,
 } from "../auth/sessionCookie";
 import {
-    getOrCreateVisitorSession,
+    getVisitorSessionForRead,
     visitorSessionCookieName,
 } from "../auth/visitorSession";
 
@@ -38,14 +39,18 @@ export const pages = new Elysia()
     )
     .use(html())
     .get("/", async ({ cookie, request }) => {
-        const visitor = await getOrCreateVisitorSession(
+        const visitor = await getVisitorSessionForRead(
             cookie[visitorSessionCookieName],
             request,
         );
-        return <HomePage cartCount={await countCartUnits(visitor.id)} />;
+        return (
+            <HomePage
+                cartCount={visitor ? await countCartUnits(visitor.id) : 0}
+            />
+        );
     })
     .get("/cart", async ({ cookie, query, request }) => {
-        const visitor = await getOrCreateVisitorSession(
+        const visitor = await getVisitorSessionForRead(
             cookie[visitorSessionCookieName],
             request,
         );
@@ -56,28 +61,34 @@ export const pages = new Elysia()
                   ? "The cart could not be changed."
                   : undefined;
         return (
-            <CartPage items={await getCartItems(visitor.id)} error={error} />
+            <CartPage
+                items={visitor ? await getCartItems(visitor.id) : []}
+                error={error}
+            />
         );
     })
     .get("/orders", async ({ cookie, request }) => {
-        const visitor = await getOrCreateVisitorSession(
+        const visitor = await getVisitorSessionForRead(
             cookie[visitorSessionCookieName],
             request,
         );
         return (
             <OrdersPage
-                orders={await getVisitorOrders(visitor.id)}
-                cartCount={await countCartUnits(visitor.id)}
+                orders={visitor ? await getVisitorOrders(visitor.id) : []}
+                cartCount={visitor ? await countCartUnits(visitor.id) : 0}
             />
         );
     })
     .get("/orders/:id", async ({ cookie, params, request, set }) => {
-        const visitor = await getOrCreateVisitorSession(
+        const visitor = await getVisitorSessionForRead(
             cookie[visitorSessionCookieName],
             request,
         );
-        const order = isOrderId(params.id) ? await getOrder(params.id) : null;
-        if (!order) {
+        const order =
+            visitor && isOrderId(params.id)
+                ? await getVisitorOrder(visitor.id, params.id)
+                : null;
+        if (!visitor || !order) {
             set.status = 404;
             return <OrderNotFoundPage />;
         }

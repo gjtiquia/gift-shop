@@ -11,6 +11,8 @@ import {
     visitorSessionsTable,
 } from "../../db";
 import { visitorSessionCookieMaxAgeSeconds } from "../../auth/visitorSession";
+import { createAuthSession } from "../../auth/lucia";
+import { authSessionCookieName } from "../../auth/sessionCookie";
 
 const app = new Elysia().use(pages).use(api);
 
@@ -49,38 +51,15 @@ function request(
     );
 }
 
-const firstHome = await request("/");
-assert.equal(firstHome.status, 200);
-const firstCookie = cookieFrom(firstHome);
-const firstSetCookie = firstHome.headers.get("set-cookie")!;
-assert.match(firstSetCookie, /visitor_session=/);
-assert.match(firstSetCookie, /HttpOnly/);
-assert.match(firstSetCookie, /SameSite=Lax/);
-assert.match(firstSetCookie, /Path=\//);
-assert.match(
-    firstSetCookie,
-    new RegExp(`Max-Age=${visitorSessionCookieMaxAgeSeconds}`),
-);
-assert.equal(firstSetCookie.includes("Secure"), false);
-assert.equal((await db.select().from(visitorSessionsTable)).length, 1);
-
-const renewedHome = await request("/", { cookie: firstCookie });
-assert.equal(renewedHome.status, 200);
-assert.match(
-    renewedHome.headers.get("set-cookie") ?? "",
-    new RegExp(`Max-Age=${visitorSessionCookieMaxAgeSeconds}`),
-);
-assert.equal(visitorId(cookieFrom(renewedHome)), visitorId(firstCookie));
-assert.equal((await db.select().from(visitorSessionsTable)).length, 1);
-
-const secureHome = await app.handle(new Request("https://localhost/"));
-assert.match(secureHome.headers.get("set-cookie") ?? "", /Secure/);
-const secureCookie = cookieFrom(secureHome);
-
+for (const path of ["/", "/cart", "/orders", "/api/orders"]) {
+    const anonymousRead = await request(path);
+    assert.equal(anonymousRead.status, 200);
+    assert.equal(anonymousRead.headers.get("set-cookie"), null);
+}
 const invalidHome = await request("/", { cookie: "visitor_session=invalid" });
-const secondCookie = cookieFrom(invalidHome);
-assert.notEqual(visitorId(secondCookie), visitorId(firstCookie));
-assert.equal((await db.select().from(visitorSessionsTable)).length, 3);
+assert.equal(invalidHome.status, 200);
+assert.equal(invalidHome.headers.get("set-cookie"), null);
+assert.equal((await db.select().from(visitorSessionsTable)).length, 0);
 
 const now = new Date();
 const [inventory] = await db
@@ -95,11 +74,72 @@ const [inventory] = await db
     })
     .returning();
 
-await request(`/api/cart/items/${inventory.id}/add`, {
+const csrfRejected = await app.handle(
+    new Request(`http://localhost/api/cart/items/${inventory.id}/add`, {
+        method: "POST",
+        headers: { "Sec-Fetch-Site": "cross-site" },
+        body: new URLSearchParams({ quantity: "1" }),
+    }),
+);
+assert.equal(csrfRejected.status, 403);
+assert.equal((await db.select().from(visitorSessionsTable)).length, 0);
+
+const addResponse = await request(`/api/cart/items/${inventory.id}/add`, {
     method: "POST",
-    cookie: secureCookie,
-    form: { quantity: "1" },
+    form: { quantity: "2" },
+    htmx: true,
 });
+const addHtml = await addResponse.text();
+assert.equal(addResponse.status, 200, addHtml);
+assert.match(addHtml, /Added/);
+assert.match(addHtml, /Cart \(2\)/);
+assert.match(addHtml, /hx-swap-oob="outerHTML"/);
+const firstCookie = cookieFrom(addResponse);
+const firstSetCookie = addResponse.headers.get("set-cookie")!;
+assert.match(firstSetCookie, /visitor_session=/);
+assert.match(firstSetCookie, /HttpOnly/);
+assert.match(firstSetCookie, /SameSite=Lax/);
+assert.match(firstSetCookie, /Path=\//);
+assert.match(
+    firstSetCookie,
+    new RegExp(`Max-Age=${visitorSessionCookieMaxAgeSeconds}`),
+);
+assert.equal(firstSetCookie.includes("Secure"), false);
+assert.equal((await db.select().from(visitorSessionsTable)).length, 1);
+assert.equal((await db.select().from(cartItemsTable)).length, 1);
+
+const [sessionBeforeRead] = await db
+    .select()
+    .from(visitorSessionsTable)
+    .where(eq(visitorSessionsTable.id, visitorId(firstCookie)));
+const renewedHome = await request("/", { cookie: firstCookie });
+assert.equal(renewedHome.status, 200);
+assert.match(
+    renewedHome.headers.get("set-cookie") ?? "",
+    new RegExp(`Max-Age=${visitorSessionCookieMaxAgeSeconds}`),
+);
+assert.equal(visitorId(cookieFrom(renewedHome)), visitorId(firstCookie));
+const [sessionAfterRead] = await db
+    .select()
+    .from(visitorSessionsTable)
+    .where(eq(visitorSessionsTable.id, visitorId(firstCookie)));
+assert.equal(
+    sessionAfterRead?.lastMutatedAt.getTime(),
+    sessionBeforeRead?.lastMutatedAt.getTime(),
+);
+
+const secureMutation = await app.handle(
+    new Request(`https://localhost/api/cart/items/${inventory.id}/add`, {
+        method: "POST",
+        headers: {
+            "Sec-Fetch-Site": "same-origin",
+            "content-type": "application/x-www-form-urlencoded",
+        },
+        body: new URLSearchParams({ quantity: "1" }),
+    }),
+);
+assert.match(secureMutation.headers.get("set-cookie") ?? "", /Secure/);
+const secureCookie = cookieFrom(secureMutation);
 await db
     .delete(visitorSessionsTable)
     .where(eq(visitorSessionsTable.id, visitorId(secureCookie)));
@@ -113,26 +153,14 @@ assert.equal(
     0,
 );
 
-const csrfRejected = await app.handle(
-    new Request(`http://localhost/api/cart/items/${inventory.id}/add`, {
-        method: "POST",
-        headers: { cookie: firstCookie, "Sec-Fetch-Site": "cross-site" },
-        body: new URLSearchParams({ quantity: "1" }),
-    }),
-);
-assert.equal(csrfRejected.status, 403);
-
-const addResponse = await request(`/api/cart/items/${inventory.id}/add`, {
+const emptyCheckoutMutation = await request("/api/orders", {
     method: "POST",
-    cookie: firstCookie,
-    form: { quantity: "2" },
-    htmx: true,
+    form: { customerName: "Kid Two", submissionId: crypto.randomUUID() },
 });
-const addHtml = await addResponse.text();
-assert.equal(addResponse.status, 200, addHtml);
-assert.match(addHtml, /Added/);
-assert.match(addHtml, /Cart \(2\)/);
-assert.match(addHtml, /hx-swap-oob="outerHTML"/);
+assert.equal(emptyCheckoutMutation.status, 303);
+const secondCookie = cookieFrom(emptyCheckoutMutation);
+assert.notEqual(visitorId(secondCookie), visitorId(firstCookie));
+assert.equal((await db.select().from(visitorSessionsTable)).length, 2);
 
 const otherCartPage = await request("/cart", { cookie: secondCookie });
 assert.match(await otherCartPage.text(), /Your cart is empty/);
@@ -144,11 +172,20 @@ assert.match(firstCartHtml, /name="submissionId"/);
 assert.match(firstCartHtml, /hx-target="#cart-region"/);
 assert.match(firstCartHtml, /#cart-region:queue all/);
 
+await db
+    .update(visitorSessionsTable)
+    .set({ lastMutatedAt: new Date(0) })
+    .where(eq(visitorSessionsTable.id, visitorId(firstCookie)));
 const increaseResponse = await request(
     `/api/cart/items/${inventory.id}/increase`,
     { method: "POST", cookie: firstCookie, htmx: true },
 );
 assert.equal(increaseResponse.status, 200);
+const [sessionAfterMutation] = await db
+    .select()
+    .from(visitorSessionsTable)
+    .where(eq(visitorSessionsTable.id, visitorId(firstCookie)));
+assert.ok((sessionAfterMutation?.lastMutatedAt.getTime() ?? 0) > 0);
 assert.equal(
     (
         await db
@@ -208,6 +245,10 @@ await db
     .set({ quantity: 4, lastModifiedAt: new Date() })
     .where(eq(inventoryTable.id, inventory.id));
 
+await db
+    .update(visitorSessionsTable)
+    .set({ lastMutatedAt: new Date(0) })
+    .where(eq(visitorSessionsTable.id, visitorId(firstCookie)));
 const submissionId = crypto.randomUUID();
 const checkout = await request("/api/orders", {
     method: "POST",
@@ -215,6 +256,11 @@ const checkout = await request("/api/orders", {
     form: { customerName: "Kid One", submissionId },
 });
 assert.equal(checkout.status, 303);
+const [sessionAfterCheckout] = await db
+    .select()
+    .from(visitorSessionsTable)
+    .where(eq(visitorSessionsTable.id, visitorId(firstCookie)));
+assert.ok((sessionAfterCheckout?.lastMutatedAt.getTime() ?? 0) > 0);
 const orderLocation = checkout.headers.get("location");
 assert.match(orderLocation ?? "", /^\/orders\/[0-9a-f-]{36}$/i);
 assert.equal(
@@ -289,6 +335,54 @@ assert.match(firstHistoryHtml, /Kid One/);
 assert.equal(firstHistoryHtml.includes("Kid Two"), false);
 const secondHistory = await request("/orders", { cookie: secondCookie });
 assert.equal((await secondHistory.text()).includes("Kid One"), false);
+
+assert.ok(orderLocation);
+const ownerOrderPage = await request(orderLocation, { cookie: firstCookie });
+assert.equal(ownerOrderPage.status, 200);
+assert.match(await ownerOrderPage.text(), /Kid One/);
+const ownerOrderApi = await request(`/api${orderLocation}`, {
+    cookie: firstCookie,
+});
+assert.equal(ownerOrderApi.status, 200);
+assert.equal((await ownerOrderApi.json()).order.customerName, "Kid One");
+
+const visitorCountBeforeAnonymousOrderRead = (
+    await db.select().from(visitorSessionsTable)
+).length;
+for (const path of [orderLocation, `/api${orderLocation}`]) {
+    const missingVisitor = await request(path);
+    assert.equal(missingVisitor.status, 404);
+    assert.equal(missingVisitor.headers.get("set-cookie"), null);
+    const wrongVisitor = await request(path, { cookie: secondCookie });
+    assert.equal(wrongVisitor.status, 404);
+}
+assert.equal(
+    (await db.select().from(visitorSessionsTable)).length,
+    visitorCountBeforeAnonymousOrderRead,
+);
+
+const { authSessionToken } = await createAuthSession("admin");
+const adminOrderPage = await request(`/admin${orderLocation}`, {
+    cookie: `${authSessionCookieName}=${authSessionToken}`,
+});
+assert.equal(adminOrderPage.status, 200);
+assert.match(await adminOrderPage.text(), /Kid One/);
+
+assert.throws(() =>
+    db
+        .delete(visitorSessionsTable)
+        .where(eq(visitorSessionsTable.id, visitorId(firstCookie)))
+        .run(),
+);
+assert.equal(
+    (
+        await db
+            .select()
+            .from(ordersTable)
+            .where(eq(ordersTable.id, createdOrder.id))
+    ).length,
+    1,
+);
 
 await db.delete(inventoryTable).where(eq(inventoryTable.id, inventory.id));
 assert.equal((await db.select().from(cartItemsTable)).length, 0);

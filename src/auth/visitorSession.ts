@@ -13,38 +13,48 @@ export const visitorSessionCookieMaxAgeSeconds = 60 * 60 * 24 * 400;
 export interface VisitorSession {
     id: string;
     createdAt: Date;
-    lastSeenAt: Date;
+    lastMutatedAt: Date;
 }
 
-export async function getOrCreateVisitorSession(
+export async function getVisitorSessionForRead(
     cookie: Cookie<unknown>,
     request: Request,
 ) {
     const token = typeof cookie.value === "string" ? cookie.value : "";
     const session = token ? await validateVisitorSessionToken(token) : null;
+    // Valid reads extend the browser cookie without mutating server state.
+    if (session) setVisitorSessionCookie(cookie, token, request);
+    return session;
+}
+
+export async function getOrCreateVisitorSessionForMutation(
+    cookie: Cookie<unknown>,
+    request: Request,
+) {
+    const token = typeof cookie.value === "string" ? cookie.value : "";
+    const session = token ? await validateVisitorSessionToken(token) : null;
+    const now = new Date();
     if (session) {
-        const now = new Date();
         await db
             .update(visitorSessionsTable)
-            .set({ lastSeenAt: now })
+            .set({ lastMutatedAt: now })
             .where(eq(visitorSessionsTable.id, session.id));
         setVisitorSessionCookie(cookie, token, request);
-        return { ...session, lastSeenAt: now };
+        return { ...session, lastMutatedAt: now };
     }
 
     const created = await createSessionToken();
-    const now = new Date();
     await db.insert(visitorSessionsTable).values({
         id: created.id,
         secretHash: Buffer.from(created.secretHash),
         createdAt: now,
-        lastSeenAt: now,
+        lastMutatedAt: now,
     });
     setVisitorSessionCookie(cookie, created.token, request);
-    return { id: created.id, createdAt: now, lastSeenAt: now };
+    return { id: created.id, createdAt: now, lastMutatedAt: now };
 }
 
-export async function validateVisitorSessionToken(token: string) {
+async function validateVisitorSessionToken(token: string) {
     const id = sessionIdFromToken(token);
     if (!id) return null;
 
@@ -53,7 +63,7 @@ export async function validateVisitorSessionToken(token: string) {
             id: visitorSessionsTable.id,
             secretHash: visitorSessionsTable.secretHash,
             createdAt: visitorSessionsTable.createdAt,
-            lastSeenAt: visitorSessionsTable.lastSeenAt,
+            lastMutatedAt: visitorSessionsTable.lastMutatedAt,
         })
         .from(visitorSessionsTable)
         .where(eq(visitorSessionsTable.id, id))
@@ -64,7 +74,7 @@ export async function validateVisitorSessionToken(token: string) {
     return {
         id: stored.id,
         createdAt: stored.createdAt,
-        lastSeenAt: stored.lastSeenAt,
+        lastMutatedAt: stored.lastMutatedAt,
     };
 }
 

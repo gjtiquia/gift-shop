@@ -10,7 +10,15 @@ import {
 } from "./service";
 import { publicOrder } from "./index";
 import { pages } from "../../pages";
-import { db, inventoryTable, orderItemsTable, ordersTable } from "../../db";
+import {
+    db,
+    inventoryTable,
+    orderItemsTable,
+    ordersTable,
+    visitorSessionsTable,
+} from "../../db";
+import { createSessionToken } from "../../auth/lucia";
+import { visitorSessionCookieName } from "../../auth/visitorSession";
 import { AdminOrderPage } from "../../pages/AdminOrderPage";
 import { AdminOrdersPage } from "../../pages/AdminOrdersPage";
 
@@ -140,6 +148,14 @@ await reset();
 const kept = await addInventory("Kept", 5);
 const deleted = await addInventory("Deleted", 2);
 await db.delete(inventoryTable).where(eq(inventoryTable.id, deleted.id));
+const visitorToken = await createSessionToken();
+const visitorCreatedAt = new Date();
+await db.insert(visitorSessionsTable).values({
+    id: visitorToken.id,
+    secretHash: Buffer.from(visitorToken.secretHash),
+    createdAt: visitorCreatedAt,
+    lastMutatedAt: visitorCreatedAt,
+});
 const editable = await createOrder({
     customerName: "Customer",
     submissionId: crypto.randomUUID(),
@@ -147,6 +163,7 @@ const editable = await createOrder({
         { inventoryId: kept.id, quantity: 2 },
         { inventoryId: deleted.id, quantity: 1 },
     ],
+    visitorId: visitorToken.id,
 });
 if (editable.status !== "success") throw new Error("order was not created");
 assert.equal(
@@ -211,7 +228,11 @@ assert.match(ordersPage, /No saved orders were found/);
 assert.equal(ordersPage.includes("order-history-refresh"), false);
 
 const customerOrderPageResponse = await pages.handle(
-    new Request(`http://localhost/orders/${editable.order.id}`),
+    new Request(`http://localhost/orders/${editable.order.id}`, {
+        headers: {
+            cookie: `${visitorSessionCookieName}=${visitorToken.token}`,
+        },
+    }),
 );
 assert.equal(customerOrderPageResponse.status, 200);
 const customerOrderPage = await customerOrderPageResponse.text();

@@ -8,7 +8,7 @@ import {
     checkoutCart,
     editOrder,
     fulfillOrder,
-    getOrder,
+    getVisitorOrder,
     getVisitorOrders,
     isOrderId,
     rejectOrder,
@@ -16,17 +16,20 @@ import {
     type OrderView,
 } from "./service";
 import {
-    getOrCreateVisitorSession,
+    getOrCreateVisitorSessionForMutation,
+    getVisitorSessionForRead,
     visitorSessionCookieName,
 } from "../../auth/visitorSession";
 
 export const orders = new Elysia({ prefix: "orders" })
     .get("/", async ({ cookie, request }) => {
-        const visitor = await getOrCreateVisitorSession(
+        const visitor = await getVisitorSessionForRead(
             cookie[visitorSessionCookieName],
             request,
         );
-        return (await getVisitorOrders(visitor.id)).map(publicOrder);
+        return visitor
+            ? (await getVisitorOrders(visitor.id)).map(publicOrder)
+            : [];
     })
     .post(
         "/",
@@ -34,7 +37,7 @@ export const orders = new Elysia({ prefix: "orders" })
             if (!isValidCsrfRequest(request)) {
                 return new Response(null, { status: 403 });
             }
-            const visitor = await getOrCreateVisitorSession(
+            const visitor = await getOrCreateVisitorSessionForMutation(
                 cookie[visitorSessionCookieName],
                 request,
             );
@@ -54,12 +57,15 @@ export const orders = new Elysia({ prefix: "orders" })
             }),
         },
     )
-    .get("/:id", async ({ params, set }) => {
-        if (!isOrderId(params.id)) {
-            set.status = 404;
-            return { error: "Order not found." };
-        }
-        const order = await getOrder(params.id);
+    .get("/:id", async ({ cookie, params, request, set }) => {
+        const visitor = await getVisitorSessionForRead(
+            cookie[visitorSessionCookieName],
+            request,
+        );
+        const order =
+            visitor && isOrderId(params.id)
+                ? await getVisitorOrder(visitor.id, params.id)
+                : null;
         if (!order) {
             set.status = 404;
             return { error: "Order not found." };

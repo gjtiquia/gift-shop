@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, sql, type SQL } from "drizzle-orm";
 import {
     cartItemsTable,
     db,
@@ -299,6 +299,13 @@ export async function getOrders(ids: string[]): Promise<OrderView[]> {
     );
 }
 
+export async function getVisitorOrder(visitorId: string, orderId: string) {
+    const orders = await loadOrders(
+        and(eq(ordersTable.visitorId, visitorId), eq(ordersTable.id, orderId)),
+    );
+    return orders[0] ?? null;
+}
+
 export async function getVisitorOrders(visitorId: string) {
     return loadOrders(eq(ordersTable.visitorId, visitorId));
 }
@@ -315,6 +322,7 @@ export async function countUnfulfilledOrders() {
     return Number(result?.count ?? 0);
 }
 
+// Admin corrections intentionally remain available after fulfillment.
 export async function editOrder(
     id: string,
     input: {
@@ -411,6 +419,7 @@ export async function fulfillOrder(id: string): Promise<FulfillOrderResult> {
                 .where(eq(inventoryTable.id, item.inventoryId))
                 .limit(1)
                 .all();
+            // Deleted catalogue items intentionally do not block fulfillment.
             if (!inventory) continue;
             const quantity = Number(item.quantity);
             if (inventory.quantity < quantity) {
@@ -534,7 +543,7 @@ export function isOrderId(value: string) {
 }
 
 async function loadOrders(
-    where?: ReturnType<typeof eq> | ReturnType<typeof inArray>,
+    where?: SQL,
     adminOrder = false,
 ): Promise<OrderView[]> {
     let query = db

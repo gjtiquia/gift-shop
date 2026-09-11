@@ -15,11 +15,12 @@ export const authSessionsTable = sqliteTable("auth_sessions_table", {
     lastVerifiedAt: int({ mode: "timestamp_ms" }).notNull(),
 });
 
+// Visitor sessions intentionally have no server-side expiration.
 export const visitorSessionsTable = sqliteTable("visitor_sessions_table", {
     id: text().primaryKey(),
     secretHash: blob({ mode: "buffer" }).notNull(),
     createdAt: int({ mode: "timestamp_ms" }).notNull(),
-    lastSeenAt: int({ mode: "timestamp_ms" }).notNull(),
+    lastMutatedAt: int({ mode: "timestamp_ms" }).notNull(),
 });
 
 export const inventoryTable = sqliteTable("inventory_table", {
@@ -66,7 +67,10 @@ export const ordersTable = sqliteTable("orders_table", {
     // Random IDs make customer order URLs impractical to enumerate.
     id: text().primaryKey(),
     submissionId: text().notNull().unique(),
-    visitorId: text().references(() => visitorSessionsTable.id),
+    // Orders retain ownership, so referenced visitor sessions cannot be deleted.
+    visitorId: text().references(() => visitorSessionsTable.id, {
+        onDelete: "restrict",
+    }),
     customerName: text().notNull(), // we keep things simple, no users_table, no auth, no login
     status: text({ enum: orderStatuses }).notNull().default("unfulfilled"),
     createdAt: int({ mode: "timestamp_ms" }).notNull(),
@@ -82,8 +86,8 @@ export const orderItemsTable = sqliteTable("order_items_table", {
     orderId: text()
         .references(() => ordersTable.id, { onDelete: "cascade" })
         .notNull(),
-    // Deliberately not a foreign key: deleting catalogue inventory must not
-    // delete or prevent retaining an order's numeric reference.
+    // Orders use live catalogue data rather than snapshots. This is not a
+    // foreign key so deleted inventory leaves the numeric order reference.
     inventoryId: int().notNull(),
     quantity: int().notNull(),
     createdAt: int({ mode: "timestamp_ms" }).notNull(),

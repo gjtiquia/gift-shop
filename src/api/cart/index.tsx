@@ -4,7 +4,7 @@ import { isValidCsrfRequest } from "../../auth/csrf";
 import { CartContents } from "../../pages/components/CartContents";
 import { CartLink } from "../../pages/components/CartLink";
 import {
-    getOrCreateVisitorSession,
+    getOrCreateVisitorSessionForMutation,
     visitorSessionCookieName,
 } from "../../auth/visitorSession";
 import {
@@ -103,9 +103,9 @@ async function cartRequest(
     if (!isValidCsrfRequest(context.request)) {
         return new Response(null, { status: 403 });
     }
-    const visitor = await getOrCreateVisitorSession(
+    const visitor = await getOrCreateVisitorSessionForMutation(
         context.cookie[visitorSessionCookieName] as Parameters<
-            typeof getOrCreateVisitorSession
+            typeof getOrCreateVisitorSessionForMutation
         >[0],
         context.request,
     );
