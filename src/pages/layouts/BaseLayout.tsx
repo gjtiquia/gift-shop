@@ -5,7 +5,7 @@ interface BaseLayoutProps {
 }
 
 export function BaseLayout({ children }: BaseLayoutProps) {
-    const version = process.env.VERSION;
+    const version = process.env.ASSET_VERSION ?? process.env.VERSION;
 
     return (
         <html lang="en">
@@ -22,10 +22,7 @@ export function BaseLayout({ children }: BaseLayoutProps) {
                     rel="stylesheet"
                     href={`/public/styles.css?v=${version}`}
                 />
-                <script
-                    type="module"
-                    src={`/public/index.js?v=${version}`}
-                ></script>
+                <script defer src={`/public/index.js?v=${version}`}></script>
                 <title>Gift Shop</title>
             </head>
             <body>{children}</body>

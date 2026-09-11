@@ -16,6 +16,8 @@ export const pages = new Elysia()
             prefix: "/public",
             alwaysStatic: true,
             indexHTML: false,
+            directive: "no-cache",
+            maxAge: 0,
         }),
     )
     .use(html())

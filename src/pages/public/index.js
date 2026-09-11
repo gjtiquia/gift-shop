@@ -1,8 +1,17 @@
 // src/pages/scripts/index.ts
 var previewUrls = new WeakMap;
-for (const input of document.querySelectorAll("input[type=file][data-image-preview]")) {
+var imageInputs = Array.from(document.querySelectorAll("input[type=file][data-image-preview]"));
+for (const input of imageInputs) {
+  input.addEventListener("input", () => updateImagePreview(input));
   input.addEventListener("change", () => updateImagePreview(input));
 }
+window.addEventListener("focus", () => {
+  window.setTimeout(refreshImagePreviews, 300);
+});
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden)
+    window.setTimeout(refreshImagePreviews, 300);
+});
 var inventorySection = document.querySelector("#inventory-section");
 if (inventorySection) {
   setupInventoryEditor(inventorySection);
@@ -96,8 +105,11 @@ function updateImagePreview(input) {
   const oldUrl = previewUrls.get(input);
   if (oldUrl)
     URL.revokeObjectURL(oldUrl);
-  const file = input.files?.[0];
+  const file = input.files && input.files.length > 0 ? input.files[0] : null;
   const empty = input.dataset.imageEmpty ? document.getElementById(input.dataset.imageEmpty) : null;
+  const filename = input.dataset.imageFilename ? document.getElementById(input.dataset.imageFilename) : null;
+  if (filename)
+    filename.textContent = file ? file.name : "";
   if (file) {
     const url = URL.createObjectURL(file);
     previewUrls.set(input, url);
@@ -120,6 +132,10 @@ function updateImagePreview(input) {
     if (empty)
       empty.hidden = false;
   }
+}
+function refreshImagePreviews() {
+  for (const input of imageInputs)
+    updateImagePreview(input);
 }
 function setInventoryError(message) {
   const error = document.querySelector("#inventory-error");

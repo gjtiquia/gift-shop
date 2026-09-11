@@ -87,7 +87,13 @@ export async function AdminPage({ error }: AdminPageProps = {}) {
                                 name="image"
                                 accept="image/jpeg,image/png,image/webp"
                                 data-image-preview="new-inventory-image-preview"
+                                data-image-filename="new-inventory-image-filename"
                             />
+                            <span
+                                id="new-inventory-image-filename"
+                                class="text-xs font-normal text-gray-600"
+                                aria-live="polite"
+                            ></span>
                             <img
                                 id="new-inventory-image-preview"
                                 class="aspect-4/3 w-40 rounded-md bg-gray-100 object-cover"

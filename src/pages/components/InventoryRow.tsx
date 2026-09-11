@@ -16,6 +16,7 @@ const tableInputClasses =
 export function InventoryRow({ item }: { item: InventoryItem }) {
     const updateFormId = `update-inventory-${item.id}`;
     const imagePreviewId = `inventory-image-preview-${item.id}`;
+    const imageFilenameId = `inventory-image-filename-${item.id}`;
     const noImageId = `inventory-no-image-${item.id}`;
 
     return (
@@ -64,9 +65,15 @@ export function InventoryRow({ item }: { item: InventoryItem }) {
                             name="image"
                             accept="image/jpeg,image/png,image/webp"
                             data-image-preview={imagePreviewId}
+                            data-image-filename={imageFilenameId}
                             data-image-empty={noImageId}
                             disabled
                         />
+                        <span
+                            id={imageFilenameId}
+                            class="font-normal text-gray-600"
+                            aria-live="polite"
+                        ></span>
                     </label>
                 </div>
             </td>

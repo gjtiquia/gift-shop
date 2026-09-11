@@ -4,8 +4,12 @@ import { auth } from "./auth";
 import { pages } from "./pages";
 
 if (!process.env.VERSION) {
-    process.env.VERSION = (await Bun.$`git rev-parse --short HEAD`.text()).trim();
+    process.env.VERSION = (
+        await Bun.$`git rev-parse --short HEAD`.text()
+    ).trim();
 }
+
+process.env.ASSET_VERSION = `${process.env.VERSION}-${Date.now()}`;
 
 console.log("🦊 VERSION", process.env.VERSION);
 
