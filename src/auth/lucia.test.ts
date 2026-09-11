@@ -155,7 +155,7 @@ test("a successful login creates a cookie-backed admin session", async () => {
     );
     expect(adminPage.status).toBe(200);
     const adminHtml = await adminPage.text();
-    expect(adminHtml).toContain("Gift Shop - Admin Page");
+    expect(adminHtml).toContain("<title>Inventory | Gift Shop</title>");
     expect(adminHtml).not.toContain("data-reset-after-success");
     expect(adminHtml).not.toContain("hx-post=");
     expect(adminHtml).toContain("/public/index.js");
