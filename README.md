@@ -166,7 +166,7 @@ notes
 - [x] admin inventory "edit mode" toggle, and then save
 - [x] admin logout button
 - [x] admin button in home page
-- [ ] admin inventory "hide item" button from catalogue button (would need to add hidden field in schema)
+- [x] admin inventory "hide item" control for catalogue
 - [ ] shop cart page
 - [ ] orders page
 

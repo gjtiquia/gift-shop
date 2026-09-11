@@ -15,6 +15,7 @@ export const inventoryTable = sqliteTable("inventory_table", {
     name: text().notNull(),
     priceCentsX10: int().notNull(), // eg. 9.99 is stored as 999
     quantity: int().notNull(),
+    hidden: int({ mode: "boolean" }).notNull().default(false),
     createdAt: int({ mode: "timestamp_ms" }).notNull(),
     lastModifiedAt: int({ mode: "timestamp_ms" }).notNull(),
 

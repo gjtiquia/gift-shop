@@ -6,6 +6,7 @@ export interface InventoryItem {
     name: string;
     priceCentsX10: number;
     quantity: number;
+    hidden: boolean;
     imageId: number | null;
     adminNotes: string | null;
 }
@@ -116,6 +117,19 @@ export function InventoryRow({ item }: { item: InventoryItem }) {
                     data-js-inventoryField
                     readonly
                     required
+                />
+            </td>
+            <td class="px-3 py-4">
+                <input
+                    class="size-4 rounded border-gray-300"
+                    form={updateFormId}
+                    type="checkbox"
+                    name="hidden"
+                    value="true"
+                    aria-label={`Hide inventory item ${item.id} from catalogue`}
+                    checked={item.hidden}
+                    data-js-inventoryBoolean
+                    disabled
                 />
             </td>
             <td class="px-3 py-4">

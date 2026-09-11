@@ -91,7 +91,7 @@ function setupInventoryEditor(section) {
     for (const input of section.querySelectorAll("[data-js-inventoryField]")) {
       input.readOnly = !enabled;
     }
-    for (const input of section.querySelectorAll("[data-js-imagePreview]")) {
+    for (const input of section.querySelectorAll("[data-js-imagePreview], [data-js-inventoryBoolean]")) {
       input.disabled = !enabled;
     }
     for (const element of section.querySelectorAll("[data-js-inventoryEditOnly]")) {

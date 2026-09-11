@@ -172,6 +172,9 @@ export async function AdminPage({ error }: AdminPageProps = {}) {
                                     Quantity
                                 </th>
                                 <th class="px-3 py-3" scope="col">
+                                    Hidden
+                                </th>
+                                <th class="px-3 py-3" scope="col">
                                     Notes
                                 </th>
                                 <th

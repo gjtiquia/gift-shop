@@ -1,5 +1,5 @@
 import { html, Html } from "@elysia/html";
-import { asc } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { db, inventoryTable } from "../db";
 import { formatPrice } from "../utils";
 import { PageLayout } from "./layouts/PageLayout";
@@ -13,6 +13,7 @@ export async function HomePage() {
             imageId: inventoryTable.imageId,
         })
         .from(inventoryTable)
+        .where(eq(inventoryTable.hidden, false))
         .orderBy(asc(inventoryTable.id));
 
     return (

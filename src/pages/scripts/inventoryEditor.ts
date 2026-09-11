@@ -48,7 +48,7 @@ function setupInventoryEditor(section: HTMLElement) {
             input.readOnly = !enabled;
         }
         for (const input of section.querySelectorAll<HTMLInputElement>(
-            "[data-js-imagePreview]",
+            "[data-js-imagePreview], [data-js-inventoryBoolean]",
         )) {
             input.disabled = !enabled;
         }

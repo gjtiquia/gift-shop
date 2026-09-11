@@ -170,6 +170,7 @@ function parseInventoryForm(form: InventoryForm) {
         name,
         priceCentsX10,
         quantity: parsedQuantity,
+        hidden: form.hidden === "true",
         adminNotes: form.adminNotes?.trim() || null,
     };
 }

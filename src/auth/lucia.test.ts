@@ -371,18 +371,20 @@ test("an admin can create and update inventory without an image", async () => {
                 name: string;
                 priceCentsX10: number;
                 quantity: number;
+                hidden: number;
                 imageId: number | null;
                 adminNotes: string | null;
             },
             []
         >(
-            "SELECT id, name, priceCentsX10, quantity, imageId, adminNotes FROM inventory_table LIMIT 1",
+            "SELECT id, name, priceCentsX10, quantity, hidden, imageId, adminNotes FROM inventory_table LIMIT 1",
         )
         .get();
     expect(created).toMatchObject({
         name: "Test gift",
         priceCentsX10: 999,
         quantity: 2,
+        hidden: 0,
         imageId: null,
         adminNotes: "Fragile",
     });
@@ -396,6 +398,7 @@ test("an admin can create and update inventory without an image", async () => {
                 name: "Updated gift",
                 price: "12.50",
                 quantity: "0",
+                hidden: "true",
                 adminNotes: "",
             }),
         }),
@@ -409,18 +412,20 @@ test("an admin can create and update inventory without an image", async () => {
                     name: string;
                     priceCentsX10: number;
                     quantity: number;
+                    hidden: number;
                     imageId: number | null;
                     adminNotes: string | null;
                 },
                 [number]
             >(
-                "SELECT name, priceCentsX10, quantity, imageId, adminNotes FROM inventory_table WHERE id = ?",
+                "SELECT name, priceCentsX10, quantity, hidden, imageId, adminNotes FROM inventory_table WHERE id = ?",
             )
             .get(created.id),
     ).toEqual({
         name: "Updated gift",
         priceCentsX10: 1250,
         quantity: 0,
+        hidden: 1,
         imageId: null,
         adminNotes: null,
     });
@@ -444,9 +449,8 @@ test("an admin can create and update inventory without an image", async () => {
     );
     const catalogueHtml = await catalogueResponse.text();
     expect(catalogueHtml).toContain("/public/htmx.min.js");
-    expect(catalogueHtml).toContain("Updated gift");
-    expect(catalogueHtml).toContain("12.50");
-    expect(catalogueHtml).toContain("Out of stock");
+    expect(catalogueHtml).not.toContain("Updated gift");
+    expect(catalogueHtml).toContain("No products are available yet.");
 
     const adminResponse = await app.handle(
         new Request("http://localhost/admin", { headers: { cookie } }),
@@ -464,6 +468,9 @@ test("an admin can create and update inventory without an image", async () => {
     );
     expect(adminHtml).toContain(
         `aria-label="Quantity for inventory item ${created.id}"`,
+    );
+    expect(adminHtml).toContain(
+        `aria-label="Hide inventory item ${created.id} from catalogue"`,
     );
     expect(adminHtml).toContain(
         `aria-label="Notes for inventory item ${created.id}"`,
