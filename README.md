@@ -142,6 +142,8 @@ notes
 
 #### htmx
 
+- we are using HTMX 4 btw
+    - changes from HTMX 2: https://four.htmx.org/docs#migrating-from-htmx-2x-to-4x
 - Patterns: https://four.htmx.org/patterns
     - Lazy Load: https://four.htmx.org/patterns/lazy-load
 
