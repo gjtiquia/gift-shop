@@ -205,5 +205,6 @@ notes
 - [ ] bulletproof backend audit
 - [ ] overengineering frontend audit
 - [ ] proper loading states for any request that takes time (local image processing, server requests)
+- [ ] customizable titles in .env
 - [ ] ui polish
-- [ ] colors
+- [ ] colors (orange)

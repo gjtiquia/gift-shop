@@ -6,7 +6,7 @@ import { CartLink } from "../../pages/components/CartLink";
 import {
     getOrCreateVisitorSession,
     visitorSessionCookieName,
-} from "../../visitor/session";
+} from "../../auth/visitorSession";
 import {
     addCartItem,
     adjustCartItemQuantity,

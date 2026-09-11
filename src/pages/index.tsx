@@ -25,7 +25,7 @@ import {
 import {
     getOrCreateVisitorSession,
     visitorSessionCookieName,
-} from "../visitor/session";
+} from "../auth/visitorSession";
 
 export const pages = new Elysia()
     .use(

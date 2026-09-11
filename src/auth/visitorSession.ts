@@ -5,7 +5,7 @@ import {
     createSessionToken,
     sessionIdFromToken,
     verifySessionToken,
-} from "../auth/sessionToken";
+} from "./lucia";
 
 export const visitorSessionCookieName = "visitor_session";
 export const visitorSessionCookieMaxAgeSeconds = 60 * 60 * 24 * 400;

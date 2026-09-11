@@ -10,7 +10,7 @@ import {
     ordersTable,
     visitorSessionsTable,
 } from "../../db";
-import { visitorSessionCookieMaxAgeSeconds } from "../../visitor/session";
+import { visitorSessionCookieMaxAgeSeconds } from "../../auth/visitorSession";
 
 const app = new Elysia().use(pages).use(api);
 

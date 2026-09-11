@@ -18,7 +18,7 @@ import {
 import {
     getOrCreateVisitorSession,
     visitorSessionCookieName,
-} from "../../visitor/session";
+} from "../../auth/visitorSession";
 
 export const orders = new Elysia({ prefix: "orders" })
     .get("/", async ({ cookie, request }) => {
