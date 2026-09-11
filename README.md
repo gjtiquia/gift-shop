@@ -5,6 +5,7 @@
 - we have admins and users
 - for simplicity, all admins share a single admin account with a single admin password
 - for simplicity, users no need to sign up for accounts, tho they are required to write their names at the end of their purchase
+- browsers get a long-lived anonymous visitor session thru a cookie, which owns the device's cart and order history
 - admin fills in inventory (name, price, quantity, optional photo, optional notes)
 - users browse thru catalogue in home page
     - showing the name, price, remaining quantity, photo
@@ -200,7 +201,7 @@ notes
 - [x] admin inventory "hide item" control for catalogue
 - [x] shop cart page
 - [x] customer and admin orders pages
-- [ ] major refactor - server side cart, server assigns a random id on load if browser local storage has no cart id. kind of like an "automatic login"
+- [x] major refactor - server-side cart with long-lived anonymous visitor sessions thru cookies, leaning more heavily on htmx and removing frontend state management
 - [ ] bulletproof backend audit
 - [ ] overengineering frontend audit
 - [ ] proper loading states for any request that takes time (local image processing, server requests)

@@ -1,5 +1,6 @@
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import {
+    cartItemsTable,
     db,
     inventoryTable,
     orderItemsTable,
@@ -28,6 +29,7 @@ export interface OrderItemView {
 
 export interface OrderView {
     id: string;
+    visitorId: string | null;
     customerName: string;
     status: OrderStatus;
     adminNotes: string | null;
@@ -59,6 +61,7 @@ export async function createOrder(input: {
     customerName: string;
     submissionId: string;
     items: SubmittedOrderItem[];
+    visitorId?: string;
 }): Promise<CreateOrderResult> {
     const customerName = input.customerName.trim();
     const items = normalizeItems(input.items);
@@ -75,11 +78,14 @@ export async function createOrder(input: {
     }
 
     const [existing] = await db
-        .select({ id: ordersTable.id })
+        .select({ id: ordersTable.id, visitorId: ordersTable.visitorId })
         .from(ordersTable)
         .where(eq(ordersTable.submissionId, input.submissionId))
         .limit(1);
     if (existing) {
+        if (existing.visitorId !== (input.visitorId ?? null)) {
+            return { status: "invalid", message: "Invalid submission." };
+        }
         const order = await getOrder(existing.id);
         if (order) return { status: "success", order, created: false };
     }
@@ -118,6 +124,7 @@ export async function createOrder(input: {
                 .values({
                     id,
                     submissionId: input.submissionId,
+                    visitorId: input.visitorId,
                     customerName,
                     status: "unfulfilled",
                     createdAt: now,
@@ -141,11 +148,13 @@ export async function createOrder(input: {
     } catch (error) {
         // A repeated idempotency key can race in another request.
         const [racedOrder] = await db
-            .select({ id: ordersTable.id })
+            .select({ id: ordersTable.id, visitorId: ordersTable.visitorId })
             .from(ordersTable)
             .where(eq(ordersTable.submissionId, input.submissionId))
             .limit(1);
-        if (!racedOrder) throw error;
+        if (!racedOrder || racedOrder.visitorId !== (input.visitorId ?? null)) {
+            throw error;
+        }
         const order = await getOrder(racedOrder.id);
         if (!order) throw error;
         return { status: "success", order, created: false };
@@ -154,6 +163,125 @@ export async function createOrder(input: {
     const order = await getOrder(id);
     if (!order) throw new Error("Created order could not be loaded.");
     return { status: "success", order, created: true };
+}
+
+export async function checkoutCart(
+    visitorId: string,
+    input: { customerName: string; submissionId: string },
+): Promise<CreateOrderResult> {
+    const customerName = input.customerName.trim();
+    if (
+        !customerName ||
+        customerName.length > 200 ||
+        !isSubmissionId(input.submissionId)
+    ) {
+        return {
+            status: "invalid",
+            message: "Enter a name and valid cart quantities.",
+        };
+    }
+
+    let result:
+        | { status: "success"; id: string; created: boolean }
+        | { status: "invalid"; message: string };
+    try {
+        result = db.transaction((transaction) => {
+            const existing = transaction
+                .select({
+                    id: ordersTable.id,
+                    visitorId: ordersTable.visitorId,
+                })
+                .from(ordersTable)
+                .where(eq(ordersTable.submissionId, input.submissionId))
+                .get();
+            if (existing) {
+                return existing.visitorId === visitorId
+                    ? {
+                          status: "success" as const,
+                          id: existing.id,
+                          created: false,
+                      }
+                    : {
+                          status: "invalid" as const,
+                          message: "Invalid submission.",
+                      };
+            }
+
+            const items = transaction
+                .select({
+                    inventoryId: cartItemsTable.inventoryId,
+                    quantity: cartItemsTable.quantity,
+                    available: inventoryTable.quantity,
+                    name: inventoryTable.name,
+                })
+                .from(cartItemsTable)
+                .innerJoin(
+                    inventoryTable,
+                    eq(cartItemsTable.inventoryId, inventoryTable.id),
+                )
+                .where(eq(cartItemsTable.visitorId, visitorId))
+                .all();
+            if (items.length === 0) {
+                return {
+                    status: "invalid" as const,
+                    message: "Your cart is empty.",
+                };
+            }
+            for (const item of items) {
+                if (item.quantity > item.available) {
+                    return {
+                        status: "invalid" as const,
+                        message: `${item.name} has only ${item.available} available.`,
+                    };
+                }
+            }
+
+            const now = new Date();
+            const id = crypto.randomUUID();
+            transaction
+                .insert(ordersTable)
+                .values({
+                    id,
+                    submissionId: input.submissionId,
+                    visitorId,
+                    customerName,
+                    status: "unfulfilled",
+                    createdAt: now,
+                    lastModifiedAt: now,
+                })
+                .run();
+            transaction
+                .insert(orderItemsTable)
+                .values(
+                    items.map((item) => ({
+                        orderId: id,
+                        inventoryId: item.inventoryId,
+                        quantity: item.quantity,
+                        createdAt: now,
+                        lastModifiedAt: now,
+                    })),
+                )
+                .run();
+            transaction
+                .delete(cartItemsTable)
+                .where(eq(cartItemsTable.visitorId, visitorId))
+                .run();
+            return { status: "success" as const, id, created: true };
+        });
+    } catch (error) {
+        const [existing] = await db
+            .select({ id: ordersTable.id, visitorId: ordersTable.visitorId })
+            .from(ordersTable)
+            .where(eq(ordersTable.submissionId, input.submissionId))
+            .limit(1);
+        if (!existing || existing.visitorId !== visitorId) throw error;
+        result = { status: "success", id: existing.id, created: false };
+    }
+
+    if (result.status === "invalid") return result;
+    const order = await getOrder(result.id);
+    if (!order) throw new Error("Created order could not be loaded.");
+    return { status: "success", order, created: result.created };
 }
 
 export async function getOrder(id: string): Promise<OrderView | null> {
@@ -169,6 +297,10 @@ export async function getOrders(ids: string[]): Promise<OrderView[]> {
     return orders.sort(
         (a, b) => (position.get(a.id) ?? 0) - (position.get(b.id) ?? 0),
     );
+}
+
+export async function getVisitorOrders(visitorId: string) {
+    return loadOrders(eq(ordersTable.visitorId, visitorId));
 }
 
 export async function getAdminOrders(): Promise<OrderView[]> {
@@ -408,6 +540,7 @@ async function loadOrders(
     let query = db
         .select({
             id: ordersTable.id,
+            visitorId: ordersTable.visitorId,
             customerName: ordersTable.customerName,
             status: ordersTable.status,
             adminNotes: ordersTable.adminNotes,
@@ -450,6 +583,7 @@ async function loadOrders(
         if (!order) {
             order = {
                 id: row.id,
+                visitorId: row.visitorId,
                 customerName: row.customerName,
                 status: row.status,
                 adminNotes: row.adminNotes,

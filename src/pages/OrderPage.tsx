@@ -1,9 +1,16 @@
 import { html, Html } from "@elysia/html";
 import type { OrderView } from "../api/orders/service";
+import { CartLink } from "./components/CartLink";
 import { OrderSummary } from "./components/OrderSummary";
 import { PageLayout } from "./layouts/PageLayout";
 
-export function OrderPage({ order }: { order: OrderView }) {
+export function OrderPage({
+    order,
+    cartCount,
+}: {
+    order: OrderView;
+    cartCount: number;
+}) {
     return (
         <PageLayout
             title="Order"
@@ -15,13 +22,7 @@ export function OrderPage({ order }: { order: OrderView }) {
                     >
                         History
                     </a>
-                    <a
-                        class="text-sm font-medium text-blue-700 underline decoration-blue-300 underline-offset-4 hover:text-blue-900"
-                        href="/cart"
-                        data-js-cartLink
-                    >
-                        Cart
-                    </a>
+                    <CartLink count={cartCount} />
                 </>
             }
         >

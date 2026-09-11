@@ -1,4 +1,10 @@
-import { blob, int, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import {
+    blob,
+    int,
+    sqliteTable,
+    text,
+    uniqueIndex,
+} from "drizzle-orm/sqlite-core";
 
 // ref: https://github.com/lucia-auth/lucia/blob/main/code/auth_session.ts
 // we omit the userId cuz we dont have the notion of "users" to keep things simple
@@ -7,6 +13,13 @@ export const authSessionsTable = sqliteTable("auth_sessions_table", {
     secretHash: blob({ mode: "buffer" }).notNull(),
     createdAt: int({ mode: "timestamp_ms" }).notNull(),
     lastVerifiedAt: int({ mode: "timestamp_ms" }).notNull(),
+});
+
+export const visitorSessionsTable = sqliteTable("visitor_sessions_table", {
+    id: text().primaryKey(),
+    secretHash: blob({ mode: "buffer" }).notNull(),
+    createdAt: int({ mode: "timestamp_ms" }).notNull(),
+    lastSeenAt: int({ mode: "timestamp_ms" }).notNull(),
 });
 
 export const inventoryTable = sqliteTable("inventory_table", {
@@ -24,6 +37,28 @@ export const inventoryTable = sqliteTable("inventory_table", {
     adminNotes: text(),
 });
 
+export const cartItemsTable = sqliteTable(
+    "cart_items_table",
+    {
+        id: int().primaryKey({ autoIncrement: true }),
+        visitorId: text()
+            .references(() => visitorSessionsTable.id, { onDelete: "cascade" })
+            .notNull(),
+        inventoryId: int()
+            .references(() => inventoryTable.id, { onDelete: "cascade" })
+            .notNull(),
+        quantity: int().notNull(),
+        createdAt: int({ mode: "timestamp_ms" }).notNull(),
+        lastModifiedAt: int({ mode: "timestamp_ms" }).notNull(),
+    },
+    (table) => [
+        uniqueIndex("cart_items_visitor_inventory_unique").on(
+            table.visitorId,
+            table.inventoryId,
+        ),
+    ],
+);
+
 export const orderStatuses = ["unfulfilled", "fulfilled", "rejected"] as const;
 export type OrderStatus = (typeof orderStatuses)[number];
 
@@ -31,6 +66,7 @@ export const ordersTable = sqliteTable("orders_table", {
     // Random IDs make customer order URLs impractical to enumerate.
     id: text().primaryKey(),
     submissionId: text().notNull().unique(),
+    visitorId: text().references(() => visitorSessionsTable.id),
     customerName: text().notNull(), // we keep things simple, no users_table, no auth, no login
     status: text({ enum: orderStatuses }).notNull().default("unfulfilled"),
     createdAt: int({ mode: "timestamp_ms" }).notNull(),

@@ -5,48 +5,52 @@ import {
     validateAuthSessionCookie,
 } from "../../auth/sessionCookie";
 import {
-    createOrder,
+    checkoutCart,
     editOrder,
     fulfillOrder,
     getOrder,
-    getOrders,
+    getVisitorOrders,
     isOrderId,
     rejectOrder,
     restoreOrder,
     type OrderView,
 } from "./service";
-
-const submittedItemSchema = t.Object({
-    inventoryId: t.Number(),
-    quantity: t.Number(),
-});
+import {
+    getOrCreateVisitorSession,
+    visitorSessionCookieName,
+} from "../../visitor/session";
 
 export const orders = new Elysia({ prefix: "orders" })
-    .get("/", async ({ query }) => {
-        const ids = (query.ids ?? "").split(",");
-        const found = await getOrders(ids);
-        return found.map(publicOrder);
+    .get("/", async ({ cookie, request }) => {
+        const visitor = await getOrCreateVisitorSession(
+            cookie[visitorSessionCookieName],
+            request,
+        );
+        return (await getVisitorOrders(visitor.id)).map(publicOrder);
     })
     .post(
         "/",
-        async ({ body, request, set }) => {
+        async ({ body, cookie, redirect, request }) => {
             if (!isValidCsrfRequest(request)) {
-                set.status = 403;
-                return { error: "Invalid request origin." };
+                return new Response(null, { status: 403 });
             }
-            const result = await createOrder(body);
+            const visitor = await getOrCreateVisitorSession(
+                cookie[visitorSessionCookieName],
+                request,
+            );
+            const result = await checkoutCart(visitor.id, body);
             if (result.status === "invalid") {
-                set.status = 422;
-                return { error: result.message };
+                return redirect(
+                    `/cart?error=checkout&message=${encodeURIComponent(result.message)}`,
+                    303,
+                );
             }
-            set.status = result.created ? 201 : 200;
-            return { order: publicOrder(result.order) };
+            return redirect(`/orders/${result.order.id}`, 303);
         },
         {
             body: t.Object({
                 customerName: t.String(),
                 submissionId: t.String(),
-                items: t.Array(submittedItemSchema),
             }),
         },
     )

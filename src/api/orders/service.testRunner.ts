@@ -9,19 +9,10 @@ import {
     restoreOrder,
 } from "./service";
 import { publicOrder } from "./index";
-import { pages, parseCartPayload, parseOrderHistoryPayload } from "../../pages";
+import { pages } from "../../pages";
 import { db, inventoryTable, orderItemsTable, ordersTable } from "../../db";
 import { AdminOrderPage } from "../../pages/AdminOrderPage";
 import { AdminOrdersPage } from "../../pages/AdminOrdersPage";
-
-assert.deepEqual(parseCartPayload('{"2":3,"bad":4,"4":0}'), [
-    { inventoryId: 2, quantity: 3 },
-]);
-const historyId = crypto.randomUUID();
-assert.deepEqual(
-    parseOrderHistoryPayload(JSON.stringify([historyId, historyId, "bad"])),
-    [historyId],
-);
 
 async function reset() {
     await db.delete(orderItemsTable);
@@ -205,61 +196,19 @@ assert.equal(
     false,
 );
 
-const cartPartialResponse = await pages.handle(
-    new Request("http://localhost/cart/contents", {
-        method: "POST",
-        headers: { Origin: "http://localhost" },
-        body: new URLSearchParams({
-            cart: JSON.stringify({ [kept.id]: 1 }),
-        }),
-    }),
-);
-assert.equal(cartPartialResponse.status, 200);
-const cartPartial = await cartPartialResponse.text();
-assert.match(cartPartial, /Kept/);
-assert.match(cartPartial, /Line total:/);
-assert.match(cartPartial, /Total:/);
-assert.match(cartPartial, /data-js-checkoutForm/);
-assert.match(cartPartial, /name="customerName"[^>]*required/);
-
-const emptyCartPartialResponse = await pages.handle(
-    new Request("http://localhost/cart/contents", {
-        method: "POST",
-        headers: { Origin: "http://localhost" },
-        body: new URLSearchParams({ cart: "{}" }),
-    }),
-);
-assert.equal(emptyCartPartialResponse.status, 200);
-const emptyCartPartial = await emptyCartPartialResponse.text();
-assert.match(emptyCartPartial, /Your cart is empty/);
-assert.equal(emptyCartPartial.includes("data-js-checkoutForm"), false);
-
 const cartPageResponse = await pages.handle(
     new Request("http://localhost/cart"),
 );
 const cartPage = await cartPageResponse.text();
-assert.match(cartPage, /hx-trigger="cart-refresh"/);
-assert.equal(cartPage.includes("data-js-cartContentsForm"), false);
+assert.match(cartPage, /Your cart is empty/);
+assert.equal(cartPage.includes("giftShop.cart"), false);
 
 const ordersPageResponse = await pages.handle(
     new Request("http://localhost/orders"),
 );
 const ordersPage = await ordersPageResponse.text();
-assert.match(ordersPage, /hx-trigger="order-history-refresh"/);
-assert.equal(ordersPage.includes("data-js-ordersHistoryForm"), false);
-
-const historyPartialResponse = await pages.handle(
-    new Request("http://localhost/orders/history", {
-        method: "POST",
-        headers: { Origin: "http://localhost" },
-        body: new URLSearchParams({ ids: JSON.stringify([editable.order.id]) }),
-    }),
-);
-assert.equal(historyPartialResponse.status, 200);
-const historyPartial = await historyPartialResponse.text();
-assert.match(historyPartial, /Changed/);
-assert.equal(historyPartial.includes("Pack separately"), false);
-assert.equal(historyPartial.includes("Bargained separately"), false);
+assert.match(ordersPage, /No saved orders were found/);
+assert.equal(ordersPage.includes("order-history-refresh"), false);
 
 const customerOrderPageResponse = await pages.handle(
     new Request(`http://localhost/orders/${editable.order.id}`),

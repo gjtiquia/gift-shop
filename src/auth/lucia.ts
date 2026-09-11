@@ -1,5 +1,10 @@
 import { eq } from "drizzle-orm";
 import { authSessionsTable, db } from "../db";
+import {
+    createSessionToken,
+    sessionIdFromToken,
+    verifySessionToken,
+} from "./sessionToken";
 
 async function addAuthSessionToDatabase(authSession: AuthSession) {
     await db.insert(authSessionsTable).values({
@@ -123,22 +128,11 @@ export async function createAuthSession(
 ): Promise<AuthSessionAndAuthSessionToken> {
     const now = new Date();
 
-    const id = generateRandomId();
-
-    // Generate 32 random bytes.
-    // Always use a cryptographically-secure random source.
-    const secret = new Uint8Array(32);
-    crypto.getRandomValues(secret);
-
-    // It's important to use a cryptographically-secure random source.
-    const secretHashBuffer = await crypto.subtle.digest("SHA-256", secret);
-    const secretHash = new Uint8Array(secretHashBuffer);
-
-    const token = id + "." + secret.toBase64();
+    const sessionToken = await createSessionToken();
 
     const authSession: AuthSession = {
-        id,
-        secretHash,
+        id: sessionToken.id,
+        secretHash: sessionToken.secretHash,
         tokenLastVerifiedAt: now,
         createdAt: now,
     };
@@ -148,7 +142,7 @@ export async function createAuthSession(
 
     const authSessionAndAuthSessionToken: AuthSessionAndAuthSessionToken = {
         authSession,
-        authSessionToken: token,
+        authSessionToken: sessionToken.token,
     };
 
     return authSessionAndAuthSessionToken;
@@ -167,20 +161,8 @@ export async function validateAuthSessionToken(
 ): Promise<AuthSession | null> {
     const now = new Date();
 
-    const tokenParts = authSessionToken.split(".");
-    if (tokenParts.length !== 2) {
-        return null;
-    }
-    const authSessionId = tokenParts[0];
-    const encodedAuthSessionSecret = tokenParts[1];
-
-    let authSessionSecret: Uint8Array<ArrayBuffer>;
-    try {
-        // Uint8Array.fromBase64() was recently added to JavaScript.
-        authSessionSecret = Uint8Array.fromBase64(encodedAuthSessionSecret);
-    } catch {
-        return null;
-    }
+    const authSessionId = sessionIdFromToken(authSessionToken);
+    if (!authSessionId) return null;
 
     // Replace this with your own database query.
     const authSession = await getAuthSessionFromDatabase(authSessionId);
@@ -198,17 +180,7 @@ export async function validateAuthSessionToken(
         return null;
     }
 
-    const authSessionSecretHashBuffer = await crypto.subtle.digest(
-        "SHA-256",
-        authSessionSecret,
-    );
-    const authSessionSecretHash = new Uint8Array(authSessionSecretHashBuffer);
-    // Prevent any possibility of a timing attack by using a constant-time comparison.
-    const secretCorrect = constantTimeEqual(
-        authSessionSecretHash,
-        authSession.secretHash,
-    );
-    if (!secretCorrect) {
+    if (!(await verifySessionToken(authSessionToken, authSession.secretHash))) {
         return null;
     }
 
@@ -225,35 +197,4 @@ export async function validateAuthSessionToken(
     }
 
     return authSession;
-}
-
-// Returns a random alphanumeric string with 80 bits of entropy.
-function generateRandomId(): string {
-    // Human readable alphabet (a-z, 0-9 without l, o, 0, 1 to avoid confusion).
-    const alphabet = "abcdefghijkmnpqrstuvwxyz23456789";
-
-    // Generate 16 random bytes.
-    // We're only going to use 5 bits per byte so the total entropy will be 128 * 5 / 8 = 80 bits.
-    const bytes = new Uint8Array(16);
-
-    // It's important to use a cryptographically-secure random source.
-    crypto.getRandomValues(bytes);
-
-    let id = "";
-    for (let i = 0; i < bytes.length; i++) {
-        // >> 3 "removes" the right-most 3 bits of the byte, leaving us with 5 bits (0-31).
-        id += alphabet[bytes[i] >> 3];
-    }
-    return id;
-}
-
-function constantTimeEqual(a: Uint8Array, b: Uint8Array): boolean {
-    if (a.byteLength !== b.byteLength) {
-        return false;
-    }
-    let c = 0;
-    for (let i = 0; i < a.byteLength; i++) {
-        c |= a[i] ^ b[i];
-    }
-    return c === 0;
 }

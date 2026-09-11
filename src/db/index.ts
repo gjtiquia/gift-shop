@@ -27,4 +27,5 @@ if (schemaValidation.status !== "no_changes") {
 }
 
 export const db = drizzle(databaseFileName);
+db.$client.exec("PRAGMA foreign_keys = ON");
 export * from "./schema";

@@ -1,7 +1,15 @@
 import { html, Html } from "@elysia/html";
+import type { CartItemView } from "../api/cart/service";
+import { CartContents } from "./components/CartContents";
 import { PageLayout } from "./layouts/PageLayout";
 
-export function CartPage() {
+export function CartPage({
+    items,
+    error,
+}: {
+    items: CartItemView[];
+    error?: string;
+}) {
     return (
         <PageLayout
             title="Cart"
@@ -22,23 +30,14 @@ export function CartPage() {
                 </>
             }
         >
-            <section class="grid gap-6" data-js-cartPage>
-                <input hidden name="cart" data-js-cartPayload />
-                <div
-                    hx-post="/cart/contents"
-                    hx-trigger="cart-refresh"
-                    hx-include="[data-js-cartPayload]"
-                    hx-swap="innerHTML"
-                    hx-sync="this:replace"
-                    data-js-cartContents
-                >
-                    <p class="text-gray-600">Loading cart…</p>
+            <section class="grid gap-6">
+                <div id="cart-region">
+                    <CartContents
+                        items={items}
+                        submissionId={crypto.randomUUID()}
+                        error={error}
+                    />
                 </div>
-                <p
-                    class="font-medium text-red-700"
-                    role="alert"
-                    data-js-cartError
-                ></p>
             </section>
         </PageLayout>
     );
