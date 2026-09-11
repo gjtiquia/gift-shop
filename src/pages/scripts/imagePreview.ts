@@ -3,18 +3,22 @@ const imageInputs = Array.from(
     document.querySelectorAll<HTMLInputElement>("[data-js-imagePreview]"),
 );
 
-for (const input of imageInputs) {
-    input.addEventListener("input", () => updateImagePreview(input));
-    input.addEventListener("change", () => updateImagePreview(input));
-}
+if (imageInputs.length > 0) setupImagePreviews();
 
-// Some mobile camera pickers restore the page before dispatching `change`.
-window.addEventListener("focus", () => {
-    window.setTimeout(refreshImagePreviews, 300);
-});
-document.addEventListener("visibilitychange", () => {
-    if (!document.hidden) window.setTimeout(refreshImagePreviews, 300);
-});
+function setupImagePreviews() {
+    for (const input of imageInputs) {
+        input.addEventListener("input", () => updateImagePreview(input));
+        input.addEventListener("change", () => updateImagePreview(input));
+    }
+
+    // Some mobile camera pickers restore the page before dispatching `change`.
+    window.addEventListener("focus", () => {
+        window.setTimeout(refreshImagePreviews, 300);
+    });
+    document.addEventListener("visibilitychange", () => {
+        if (!document.hidden) window.setTimeout(refreshImagePreviews, 300);
+    });
+}
 
 export function updateImagePreview(input: HTMLInputElement) {
     const previewId = input.dataset.imagePreview;

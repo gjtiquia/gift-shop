@@ -11,7 +11,7 @@ export interface InventoryItem {
 }
 
 const tableInputClasses =
-    "w-full min-w-32 rounded-md border border-gray-300 px-2 py-2 text-gray-900";
+    "w-full min-w-32 rounded-md border border-gray-300 px-2 py-2 text-gray-900 read-only:border-transparent read-only:bg-transparent read-only:px-0";
 
 export function InventoryRow({ item }: { item: InventoryItem }) {
     const updateFormId = `update-inventory-${item.id}`;
@@ -52,7 +52,7 @@ export function InventoryRow({ item }: { item: InventoryItem }) {
                     </span>
                     <label
                         class="grid gap-1 text-xs font-medium text-gray-700"
-                        data-inventory-edit-only
+                        data-js-inventoryEditOnly
                         hidden
                     >
                         {item.imageId === null
@@ -85,7 +85,7 @@ export function InventoryRow({ item }: { item: InventoryItem }) {
                     name="name"
                     aria-label={`Name for inventory item ${item.id}`}
                     value={item.name}
-                    data-inventory-field
+                    data-js-inventoryField
                     readonly
                     required
                 />
@@ -98,14 +98,14 @@ export function InventoryRow({ item }: { item: InventoryItem }) {
                     aria-label={`Price for inventory item ${item.id}`}
                     inputmode="decimal"
                     value={formatPrice(item.priceCentsX10)}
-                    data-inventory-field
+                    data-js-inventoryField
                     readonly
                     required
                 />
             </td>
             <td class="px-3 py-4">
                 <input
-                    class="w-24 rounded-md border border-gray-300 px-2 py-2 text-gray-900"
+                    class="w-24 rounded-md border border-gray-300 px-2 py-2 text-gray-900 read-only:border-transparent read-only:bg-transparent read-only:px-0"
                     form={updateFormId}
                     type="number"
                     name="quantity"
@@ -113,7 +113,7 @@ export function InventoryRow({ item }: { item: InventoryItem }) {
                     min="0"
                     step="1"
                     value={String(item.quantity)}
-                    data-inventory-field
+                    data-js-inventoryField
                     readonly
                     required
                 />
@@ -125,18 +125,18 @@ export function InventoryRow({ item }: { item: InventoryItem }) {
                     name="adminNotes"
                     aria-label={`Notes for inventory item ${item.id}`}
                     value={item.adminNotes ?? ""}
-                    data-inventory-field
+                    data-js-inventoryField
                     readonly
                 />
             </td>
-            <td class="px-3 py-4" data-inventory-edit-only hidden>
+            <td class="px-3 py-4" data-js-inventoryEditOnly hidden>
                 <div>
                     <form
                         id={updateFormId}
                         method="post"
                         action={`/api/inventory/${item.id}`}
                         enctype="multipart/form-data"
-                        data-inventory-update-form
+                        data-js-inventoryUpdateForm
                     ></form>
                     <button
                         class="rounded-md border border-red-300 px-3 py-2 font-medium text-red-700"

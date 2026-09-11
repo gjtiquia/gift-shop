@@ -35,6 +35,7 @@ export async function AdminPage({ error }: AdminPageProps = {}) {
                 <p
                     id="inventory-error"
                     class="min-h-6 text-sm font-medium text-red-700"
+                    data-js-inventoryError
                     role="alert"
                 >
                     {error ?? ""}
@@ -113,34 +114,30 @@ export async function AdminPage({ error }: AdminPageProps = {}) {
                     </form>
                 </section>
 
-                <section
-                    id="inventory-section"
-                    class="grid gap-4"
-                    data-js-inventoryEditor
-                >
+                <section class="grid gap-4" data-js-inventoryEditor>
                     <div class="flex flex-wrap items-center justify-between gap-3">
                         <h2 class="text-xl font-semibold text-gray-950">
                             Inventory
                         </h2>
                         <div class="flex flex-wrap gap-2">
                             <button
-                                id="inventory-edit"
                                 class="rounded-md bg-gray-950 px-4 py-2 font-medium text-white"
+                                data-js-inventoryEdit
                                 type="button"
                             >
                                 Edit
                             </button>
                             <button
-                                id="inventory-save"
                                 class="rounded-md bg-gray-950 px-4 py-2 font-medium text-white"
+                                data-js-inventorySave
                                 type="button"
                                 hidden
                             >
                                 Save changes
                             </button>
                             <button
-                                id="inventory-discard"
                                 class="rounded-md border border-gray-300 px-4 py-2 font-medium text-gray-800"
+                                data-js-inventoryDiscard
                                 type="button"
                                 hidden
                             >
@@ -173,7 +170,7 @@ export async function AdminPage({ error }: AdminPageProps = {}) {
                                     <th
                                         class="px-3 py-3"
                                         scope="col"
-                                        data-inventory-edit-only
+                                        data-js-inventoryEditOnly
                                         hidden
                                     >
                                         Actions

@@ -1,17 +1,21 @@
 // src/pages/scripts/imagePreview.ts
 var previewUrls = new WeakMap;
 var imageInputs = Array.from(document.querySelectorAll("[data-js-imagePreview]"));
-for (const input of imageInputs) {
-  input.addEventListener("input", () => updateImagePreview(input));
-  input.addEventListener("change", () => updateImagePreview(input));
-}
-window.addEventListener("focus", () => {
-  window.setTimeout(refreshImagePreviews, 300);
-});
-document.addEventListener("visibilitychange", () => {
-  if (!document.hidden)
+if (imageInputs.length > 0)
+  setupImagePreviews();
+function setupImagePreviews() {
+  for (const input of imageInputs) {
+    input.addEventListener("input", () => updateImagePreview(input));
+    input.addEventListener("change", () => updateImagePreview(input));
+  }
+  window.addEventListener("focus", () => {
     window.setTimeout(refreshImagePreviews, 300);
-});
+  });
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden)
+      window.setTimeout(refreshImagePreviews, 300);
+  });
+}
 function updateImagePreview(input) {
   const previewId = input.dataset.imagePreview;
   if (!previewId)
@@ -60,15 +64,15 @@ for (const section of document.querySelectorAll("[data-js-inventoryEditor]")) {
   setupInventoryEditor(section);
 }
 function setupInventoryEditor(section) {
-  const editButton = section.querySelector("#inventory-edit");
-  const saveButton = section.querySelector("#inventory-save");
-  const discardButton = section.querySelector("#inventory-discard");
+  const editButton = section.querySelector("[data-js-inventoryEdit]");
+  const saveButton = section.querySelector("[data-js-inventorySave]");
+  const discardButton = section.querySelector("[data-js-inventoryDiscard]");
   if (!editButton || !saveButton || !discardButton)
     return;
   const edit = editButton;
   const save = saveButton;
   const discard = discardButton;
-  const updateForms = Array.from(section.querySelectorAll("form[data-inventory-update-form]"));
+  const updateForms = Array.from(section.querySelectorAll("form[data-js-inventoryUpdateForm]"));
   const dirtyForms = new Set;
   section.addEventListener("input", markChangedForm);
   section.addEventListener("change", markChangedForm);
@@ -79,18 +83,18 @@ function setupInventoryEditor(section) {
     const target = event.target;
     if (!(target instanceof HTMLInputElement) || !target.form)
       return;
-    if (!target.form.matches("[data-inventory-update-form]"))
+    if (!target.form.matches("[data-js-inventoryUpdateForm]"))
       return;
     dirtyForms.add(target.form);
   }
   function setEditMode(enabled) {
-    for (const input of section.querySelectorAll("[data-inventory-field]")) {
+    for (const input of section.querySelectorAll("[data-js-inventoryField]")) {
       input.readOnly = !enabled;
     }
     for (const input of section.querySelectorAll("[data-js-imagePreview]")) {
       input.disabled = !enabled;
     }
-    for (const element of section.querySelectorAll("[data-inventory-edit-only]")) {
+    for (const element of section.querySelectorAll("[data-js-inventoryEditOnly]")) {
       element.hidden = !enabled;
     }
     edit.hidden = enabled;
@@ -139,7 +143,7 @@ function setupInventoryEditor(section) {
   }
 }
 function setInventoryError(message) {
-  const error = document.querySelector("#inventory-error");
+  const error = document.querySelector("[data-js-inventoryError]");
   if (error)
     error.textContent = message;
 }

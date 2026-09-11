@@ -7,12 +7,15 @@ for (const section of document.querySelectorAll<HTMLElement>(
 }
 
 function setupInventoryEditor(section: HTMLElement) {
-    const editButton =
-        section.querySelector<HTMLButtonElement>("#inventory-edit");
-    const saveButton =
-        section.querySelector<HTMLButtonElement>("#inventory-save");
-    const discardButton =
-        section.querySelector<HTMLButtonElement>("#inventory-discard");
+    const editButton = section.querySelector<HTMLButtonElement>(
+        "[data-js-inventoryEdit]",
+    );
+    const saveButton = section.querySelector<HTMLButtonElement>(
+        "[data-js-inventorySave]",
+    );
+    const discardButton = section.querySelector<HTMLButtonElement>(
+        "[data-js-inventoryDiscard]",
+    );
     if (!editButton || !saveButton || !discardButton) return;
     const edit = editButton;
     const save = saveButton;
@@ -20,7 +23,7 @@ function setupInventoryEditor(section: HTMLElement) {
 
     const updateForms = Array.from(
         section.querySelectorAll<HTMLFormElement>(
-            "form[data-inventory-update-form]",
+            "form[data-js-inventoryUpdateForm]",
         ),
     );
     const dirtyForms = new Set<HTMLFormElement>();
@@ -34,13 +37,13 @@ function setupInventoryEditor(section: HTMLElement) {
     function markChangedForm(event: Event) {
         const target = event.target;
         if (!(target instanceof HTMLInputElement) || !target.form) return;
-        if (!target.form.matches("[data-inventory-update-form]")) return;
+        if (!target.form.matches("[data-js-inventoryUpdateForm]")) return;
         dirtyForms.add(target.form);
     }
 
     function setEditMode(enabled: boolean) {
         for (const input of section.querySelectorAll<HTMLInputElement>(
-            "[data-inventory-field]",
+            "[data-js-inventoryField]",
         )) {
             input.readOnly = !enabled;
         }
@@ -50,7 +53,7 @@ function setupInventoryEditor(section: HTMLElement) {
             input.disabled = !enabled;
         }
         for (const element of section.querySelectorAll<HTMLElement>(
-            "[data-inventory-edit-only]",
+            "[data-js-inventoryEditOnly]",
         )) {
             element.hidden = !enabled;
         }
@@ -113,6 +116,8 @@ function setupInventoryEditor(section: HTMLElement) {
 }
 
 function setInventoryError(message: string) {
-    const error = document.querySelector<HTMLElement>("#inventory-error");
+    const error = document.querySelector<HTMLElement>(
+        "[data-js-inventoryError]",
+    );
     if (error) error.textContent = message;
 }

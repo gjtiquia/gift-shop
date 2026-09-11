@@ -488,6 +488,15 @@
     --tw-font-weight: var(--font-weight-medium);
     font-weight: var(--font-weight-medium);
   }
+  .read-only\:border-transparent:read-only {
+    border-color: transparent;
+  }
+  .read-only\:bg-transparent:read-only {
+    background-color: transparent;
+  }
+  .read-only\:px-0:read-only {
+    padding-inline: 0px;
+  }
   @media (width >= 40rem) {
     .sm\:col-span-2 {
       grid-column: span 2 / span 2;
@@ -523,13 +532,6 @@
     .xl\:grid-cols-4 {
       grid-template-columns: repeat(4, minmax(0, 1fr));
     }
-  }
-}
-@layer components {
-  [data-inventory-field]:read-only {
-    border-color: transparent;
-    background: transparent;
-    padding-inline: 0;
   }
 }
 @property --tw-divide-y-reverse {
