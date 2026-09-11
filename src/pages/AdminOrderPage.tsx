@@ -88,12 +88,15 @@ export function AdminOrderPage({
 
                 <form
                     id="order-edit-form"
-                    class={`overflow-hidden rounded-lg border shadow-sm ${orderStatusClasses(order.status)}`}
+                    class="grid gap-5"
                     method="post"
                     action={`/api/orders/${order.id}/edit`}
                     data-js-orderEditForm
                 >
-                    <dl class="grid gap-3 p-4 sm:grid-cols-2">
+                    <dl
+                        class={`grid gap-3 rounded-lg border p-4 shadow-sm sm:grid-cols-2 ${orderStatusClasses(order.status)}`}
+                        data-order-status-panel
+                    >
                         <div>
                             <dt
                                 class={`text-xs font-medium uppercase ${colored ? "text-white" : "text-gray-500"}`}
@@ -144,15 +147,12 @@ export function AdminOrderPage({
                         </div>
                     </dl>
 
-                    <div class="overflow-x-auto">
+                    <div
+                        class="overflow-x-auto rounded-lg border border-gray-200 bg-white text-gray-950 shadow-sm"
+                        data-order-items-table
+                    >
                         <table class="w-full min-w-240 border-collapse text-left text-sm">
-                            <thead
-                                class={
-                                    colored
-                                        ? "bg-black/10"
-                                        : "bg-gray-100 text-gray-700"
-                                }
-                            >
+                            <thead class="bg-gray-100 text-gray-700">
                                 <tr>
                                     <th class="px-3 py-3">Image</th>
                                     <th class="px-3 py-3">Item</th>
@@ -171,13 +171,7 @@ export function AdminOrderPage({
                                     </th>
                                 </tr>
                             </thead>
-                            <tbody
-                                class={
-                                    colored
-                                        ? "divide-y divide-white/30"
-                                        : "divide-y divide-gray-200"
-                                }
-                            >
+                            <tbody class="divide-y divide-gray-200">
                                 {order.items.map((item, index) => {
                                     const name =
                                         item.inventory?.name ??
@@ -322,11 +316,7 @@ export function AdminOrderPage({
                                     );
                                 })}
                                 <tr
-                                    class={
-                                        colored
-                                            ? "border-t border-white/30"
-                                            : "border-t border-gray-200"
-                                    }
+                                    class="border-t border-gray-200"
                                     data-js-orderEditOnly
                                     hidden
                                 >
@@ -382,13 +372,7 @@ export function AdminOrderPage({
                                 </tr>
                             </tbody>
                             <tfoot>
-                                <tr
-                                    class={
-                                        colored
-                                            ? "border-t border-white/30 font-semibold"
-                                            : "border-t border-gray-200 font-semibold"
-                                    }
-                                >
+                                <tr class="border-t border-gray-200 font-semibold">
                                     <th
                                         class="px-3 py-3 text-right"
                                         colspan="6"
@@ -403,13 +387,7 @@ export function AdminOrderPage({
                         </table>
                     </div>
 
-                    <section
-                        class={
-                            colored
-                                ? "border-t border-white/30 p-4"
-                                : "border-t border-gray-200 p-4"
-                        }
-                    >
+                    <section class="rounded-lg border border-gray-200 bg-white p-4 text-gray-950 shadow-sm">
                         <h2 class="font-semibold">Private admin notes</h2>
                         <p class="whitespace-pre-wrap" data-js-orderReadOnly>
                             {order.adminNotes || "No admin notes."}

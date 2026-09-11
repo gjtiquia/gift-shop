@@ -11,6 +11,7 @@ export function OrderSummary({ order }: { order: OrderView }) {
         <div class="grid gap-5">
             <dl
                 class={`grid gap-2 rounded-lg border p-4 shadow-sm sm:grid-cols-2 ${orderStatusClasses(order.status)}`}
+                data-order-status-panel
             >
                 <div>
                     <dt
@@ -46,16 +47,11 @@ export function OrderSummary({ order }: { order: OrderView }) {
                 </div>
             </dl>
             <div
-                class={`overflow-x-auto rounded-lg border shadow-sm ${orderStatusClasses(order.status)}`}
+                class="overflow-x-auto rounded-lg border border-gray-200 bg-white text-gray-950 shadow-sm"
+                data-order-items-table
             >
                 <table class="w-full min-w-160 border-collapse text-left text-sm">
-                    <thead
-                        class={
-                            colored
-                                ? "bg-black/10"
-                                : "bg-gray-100 text-gray-700"
-                        }
-                    >
+                    <thead class="bg-gray-100 text-gray-700">
                         <tr>
                             <th class="px-3 py-3">Image</th>
                             <th class="px-3 py-3">Item</th>
@@ -64,13 +60,7 @@ export function OrderSummary({ order }: { order: OrderView }) {
                             <th class="px-3 py-3">Line total</th>
                         </tr>
                     </thead>
-                    <tbody
-                        class={
-                            colored
-                                ? "divide-y divide-white/30"
-                                : "divide-y divide-gray-200"
-                        }
-                    >
+                    <tbody class="divide-y divide-gray-200">
                         {order.items.map((item) => {
                             const name =
                                 item.inventory?.name ??
@@ -107,13 +97,7 @@ export function OrderSummary({ order }: { order: OrderView }) {
                         })}
                     </tbody>
                     <tfoot>
-                        <tr
-                            class={
-                                colored
-                                    ? "border-t border-white/30 font-semibold"
-                                    : "border-t border-gray-200 font-semibold"
-                            }
-                        >
+                        <tr class="border-t border-gray-200 font-semibold">
                             <th class="px-3 py-3 text-right" colspan="4">
                                 Total:
                             </th>

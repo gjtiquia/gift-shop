@@ -24,25 +24,22 @@ export function OrdersPage() {
             }
         >
             <section class="grid gap-4" data-js-ordersPage>
-                <form
-                    hidden
-                    data-js-ordersHistoryForm
+                <input hidden name="ids" data-js-ordersHistoryPayload />
+                <div
                     hx-post="/orders/history"
-                    hx-target="[data-js-ordersList]"
+                    hx-trigger="order-history-refresh"
+                    hx-include="[data-js-ordersHistoryPayload]"
                     hx-swap="innerHTML"
                     hx-sync="this:replace"
+                    data-js-ordersList
                 >
-                    <input name="ids" data-js-ordersHistoryPayload />
-                </form>
-                <p class="text-gray-600" data-js-ordersLoading>
-                    Loading order history…
-                </p>
+                    <p class="text-gray-600">Loading order history…</p>
+                </div>
                 <p
                     class="font-medium text-red-700"
                     role="alert"
                     data-js-ordersError
                 ></p>
-                <div data-js-ordersList></div>
             </section>
         </PageLayout>
     );

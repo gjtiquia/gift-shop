@@ -12,6 +12,7 @@ import { publicOrder } from "./index";
 import { pages, parseCartPayload, parseOrderHistoryPayload } from "../../pages";
 import { db, inventoryTable, orderItemsTable, ordersTable } from "../../db";
 import { AdminOrderPage } from "../../pages/AdminOrderPage";
+import { AdminOrdersPage } from "../../pages/AdminOrdersPage";
 
 assert.deepEqual(parseCartPayload('{"2":3,"bad":4,"4":0}'), [
     { inventoryId: 2, quantity: 3 },
@@ -218,6 +219,34 @@ const cartPartial = await cartPartialResponse.text();
 assert.match(cartPartial, /Kept/);
 assert.match(cartPartial, /Line total:/);
 assert.match(cartPartial, /Total:/);
+assert.match(cartPartial, /data-js-checkoutForm/);
+assert.match(cartPartial, /name="customerName"[^>]*required/);
+
+const emptyCartPartialResponse = await pages.handle(
+    new Request("http://localhost/cart/contents", {
+        method: "POST",
+        headers: { Origin: "http://localhost" },
+        body: new URLSearchParams({ cart: "{}" }),
+    }),
+);
+assert.equal(emptyCartPartialResponse.status, 200);
+const emptyCartPartial = await emptyCartPartialResponse.text();
+assert.match(emptyCartPartial, /Your cart is empty/);
+assert.equal(emptyCartPartial.includes("data-js-checkoutForm"), false);
+
+const cartPageResponse = await pages.handle(
+    new Request("http://localhost/cart"),
+);
+const cartPage = await cartPageResponse.text();
+assert.match(cartPage, /hx-trigger="cart-refresh"/);
+assert.equal(cartPage.includes("data-js-cartContentsForm"), false);
+
+const ordersPageResponse = await pages.handle(
+    new Request("http://localhost/orders"),
+);
+const ordersPage = await ordersPageResponse.text();
+assert.match(ordersPage, /hx-trigger="order-history-refresh"/);
+assert.equal(ordersPage.includes("data-js-ordersHistoryForm"), false);
 
 const historyPartialResponse = await pages.handle(
     new Request("http://localhost/orders/history", {
@@ -241,6 +270,10 @@ assert.equal(customerOrderPage.includes("Pack separately"), false);
 assert.equal(customerOrderPage.includes("Bargained separately"), false);
 assert.equal(customerOrderPage.includes("text-white/80"), false);
 assert.equal(customerOrderPage.includes("text-white"), true);
+assert.match(
+    customerOrderPage,
+    /class="[^"]*bg-white[^"]*text-gray-950[^"]*" data-order-items-table/,
+);
 
 const adminOrderPage = String(
     AdminOrderPage({ order: editedOrder, inventory: [kept] }),
@@ -249,5 +282,21 @@ assert.match(adminOrderPage, /aria-label="Customer name"/);
 assert.match(adminOrderPage, /aria-label="Private notes for Kept, item 1"/);
 assert.match(adminOrderPage, /aria-label="Private order notes"/);
 assert.equal(adminOrderPage.includes("text-white/80"), false);
+assert.match(
+    adminOrderPage,
+    /class="[^"]*bg-white[^"]*text-gray-950[^"]*" data-order-items-table/,
+);
+
+const adminOrdersPage = String(AdminOrdersPage({ orders: [editedOrder] }));
+const unfulfilledHeading = adminOrdersPage.indexOf("Unfulfilled orders");
+const fulfilledHeading = adminOrdersPage.indexOf("Fulfilled orders");
+const rejectedHeading = adminOrdersPage.indexOf("Rejected orders");
+assert.ok(unfulfilledHeading >= 0);
+assert.ok(fulfilledHeading > unfulfilledHeading);
+assert.ok(rejectedHeading > fulfilledHeading);
+assert.equal((adminOrdersPage.match(/<table/g) ?? []).length, 3);
+assert.match(adminOrdersPage, /No unfulfilled orders/);
+assert.match(adminOrdersPage, /No rejected orders/);
+assert.match(adminOrdersPage, /bg-green-700 text-white/);
 
 console.log("ORDER_SERVICE_TESTS_PASSED");

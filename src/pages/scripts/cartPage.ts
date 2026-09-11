@@ -8,6 +8,12 @@ import {
     setCartQuantity,
 } from "./cartStorage";
 import { CartPageState } from "./cartPageState";
+import {
+    htmxContext,
+    isSuccessfulHtmxResponse,
+    refreshToken,
+    whenHtmxInitialized,
+} from "./partialRefreshState";
 
 interface CreateOrderResponse {
     error?: string;
@@ -21,78 +27,69 @@ for (const page of document.querySelectorAll<HTMLElement>(
 }
 
 function setupCartPage(page: HTMLElement) {
-    const contentsFormCandidate = page.querySelector<HTMLFormElement>(
-        "[data-js-cartContentsForm]",
-    );
     const payloadCandidate = page.querySelector<HTMLInputElement>(
         "[data-js-cartPayload]",
     );
     const contentsCandidate = page.querySelector<HTMLElement>(
         "[data-js-cartContents]",
     );
-    const loadingCandidate = page.querySelector<HTMLElement>(
-        "[data-js-cartLoading]",
-    );
     const errorCandidate = page.querySelector<HTMLElement>(
         "[data-js-cartError]",
     );
-    const checkoutFormCandidate = page.querySelector<HTMLFormElement>(
-        "[data-js-checkoutForm]",
-    );
-    if (
-        !contentsFormCandidate ||
-        !payloadCandidate ||
-        !contentsCandidate ||
-        !loadingCandidate ||
-        !errorCandidate ||
-        !checkoutFormCandidate
-    ) {
-        return;
-    }
-    const contentsForm = contentsFormCandidate;
+    if (!payloadCandidate || !contentsCandidate || !errorCandidate) return;
     const payload = payloadCandidate;
     const contents = contentsCandidate;
-    const loading = loadingCandidate;
     const errorElement = errorCandidate;
-    const checkoutForm = checkoutFormCandidate;
 
     const state = new CartPageState();
-    const refreshWhenReady = () => void refresh();
-    if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", refreshWhenReady, {
-            once: true,
-        });
-    } else {
-        refreshWhenReady();
-    }
+    let customerName = "";
+
+    whenHtmxInitialized(contents, refresh);
 
     window.addEventListener("storage", (event) => {
-        if (event.key === cartStorageKey) void refresh();
+        if (event.key === cartStorageKey) refresh();
     });
     contents.addEventListener("click", handleContentsClick);
     contents.addEventListener("change", handleQuantityChange);
-    checkoutForm.addEventListener("submit", submitOrder);
-    document.body.addEventListener("htmx:afterSwap", handleAfterSwap);
-    document.body.addEventListener("htmx:responseError", handleResponseError);
+    contents.addEventListener("htmx:before:swap", handleBeforeSwap);
+    contents.addEventListener("htmx:after:swap", handleAfterSwap);
+    contents.addEventListener("htmx:response:error", handleResponseError);
+    page.addEventListener("submit", submitOrder);
 
-    async function refresh() {
+    function refresh() {
+        const nameInput = contents.querySelector<HTMLInputElement>(
+            '[data-js-checkoutForm] input[name="customerName"]',
+        );
+        if (nameInput) customerName = nameInput.value;
+
         const cart = readCart();
-        state.beginRender(cart);
+        const token = state.beginRender(cart);
         payload.value = JSON.stringify(cart);
-        checkoutForm.hidden = Object.keys(cart).length === 0;
-        loading.textContent = "Loading cart…";
         errorElement.textContent = "";
-        contentsForm.requestSubmit();
+        contents.dispatchEvent(
+            new CustomEvent("cart-refresh", {
+                bubbles: true,
+                detail: token,
+            }),
+        );
     }
 
-    function handleAfterSwap(event: Event) {
-        const target = (event as CustomEvent<{ target?: Element }>).detail
-            ?.target;
-        if (target !== contents) return;
+    function handleBeforeSwap(event: Event) {
+        const context = htmxContext(event);
+        if (!isSuccessfulHtmxResponse(context)) {
+            event.preventDefault();
+            return;
+        }
+        const token = refreshToken(context?.sourceEvent);
+        if (!token || !state.isCurrentRender(token, readCart())) {
+            event.preventDefault();
+        }
+    }
+
+    function handleAfterSwap() {
         const rendered = contents.querySelector<HTMLElement>(
             "[data-js-cartRendered]",
         );
-        const currentRevision = cartRevision(readCart());
         if (
             !rendered?.dataset.cartRevision ||
             !state.acceptRenderedRevision(
@@ -100,19 +97,22 @@ function setupCartPage(page: HTMLElement) {
                 readCart(),
             )
         ) {
-            void refresh();
+            errorElement.textContent =
+                "The cart changed. Review the latest quantities before submitting.";
             return;
         }
-        loading.textContent = "";
-        checkoutForm.hidden = Object.keys(readCart()).length === 0;
+
+        const nameInput = contents.querySelector<HTMLInputElement>(
+            '[data-js-checkoutForm] input[name="customerName"]',
+        );
+        if (nameInput) nameInput.value = customerName;
+        errorElement.textContent = "";
     }
 
     function handleResponseError(event: Event) {
-        const detail = (
-            event as CustomEvent<{ elt?: Element; target?: Element }>
-        ).detail;
-        if (detail?.elt !== contentsForm && detail?.target !== contents) return;
-        loading.textContent = "";
+        const token = refreshToken(htmxContext(event)?.sourceEvent);
+        if (!token || !state.isCurrentRender(token, readCart())) return;
+        contents.replaceChildren();
         errorElement.textContent = "Could not load the cart.";
     }
 
@@ -155,7 +155,7 @@ function setupCartPage(page: HTMLElement) {
             !Number.isSafeInteger(quantity) ||
             quantity < 1
         ) {
-            void refresh();
+            refresh();
             return;
         }
         void changeQuantity(inventoryId, limitedQuantity(quantity, item));
@@ -171,10 +171,17 @@ function setupCartPage(page: HTMLElement) {
     async function changeQuantity(inventoryId: number, quantity: number) {
         await setCartQuantity(inventoryId, quantity);
         document.dispatchEvent(new CustomEvent("cartchange"));
-        await refresh();
+        refresh();
     }
 
     async function submitOrder(event: SubmitEvent) {
+        const checkoutForm = event.target;
+        if (
+            !(checkoutForm instanceof HTMLFormElement) ||
+            !checkoutForm.matches("[data-js-checkoutForm]")
+        ) {
+            return;
+        }
         event.preventDefault();
         if (!checkoutForm.reportValidity()) return;
 
@@ -182,7 +189,7 @@ function setupCartPage(page: HTMLElement) {
         if (!state.canSubmit(renderedCart)) {
             errorElement.textContent =
                 "The cart changed. Review the latest quantities before submitting.";
-            void refresh();
+            refresh();
             return;
         }
         const submitButton = checkoutForm.querySelector<HTMLButtonElement>(
@@ -196,7 +203,7 @@ function setupCartPage(page: HTMLElement) {
             if (checkout.status === "cart-changed") {
                 errorElement.textContent =
                     "The cart changed. Review the latest quantities before submitting.";
-                void refresh();
+                refresh();
                 return;
             }
             const items = Object.entries(checkout.cart).map(

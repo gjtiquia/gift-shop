@@ -1,4 +1,11 @@
 import { orderHistoryStorageKey, readOrderHistory } from "./cartStorage";
+import {
+    htmxContext,
+    isSuccessfulHtmxResponse,
+    PartialRefreshState,
+    refreshToken,
+    whenHtmxInitialized,
+} from "./partialRefreshState";
 
 for (const page of document.querySelectorAll<HTMLElement>(
     "[data-js-ordersPage]",
@@ -7,43 +14,62 @@ for (const page of document.querySelectorAll<HTMLElement>(
 }
 
 function setupOrdersPage(page: HTMLElement) {
-    const form = page.querySelector<HTMLFormElement>(
-        "[data-js-ordersHistoryForm]",
-    );
     const payload = page.querySelector<HTMLInputElement>(
         "[data-js-ordersHistoryPayload]",
     );
-    const loading = page.querySelector<HTMLElement>("[data-js-ordersLoading]");
-    const error = page.querySelector<HTMLElement>("[data-js-ordersError]");
     const list = page.querySelector<HTMLElement>("[data-js-ordersList]");
-    if (!form || !payload || !loading || !error || !list) return;
+    const error = page.querySelector<HTMLElement>("[data-js-ordersError]");
+    if (!payload || !list || !error) return;
 
+    const state = new PartialRefreshState();
     const load = () => {
-        payload.value = JSON.stringify(readOrderHistory());
-        form.requestSubmit();
+        const revision = JSON.stringify(readOrderHistory());
+        const token = state.begin(revision);
+        payload.value = revision;
+        error.textContent = "";
+        list.dispatchEvent(
+            new CustomEvent("order-history-refresh", {
+                bubbles: true,
+                detail: token,
+            }),
+        );
     };
-    if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", load, { once: true });
-    } else {
-        load();
-    }
+    whenHtmxInitialized(list, load);
     window.addEventListener("storage", (event) => {
         if (event.key === orderHistoryStorageKey) load();
     });
 
-    document.body.addEventListener("htmx:afterSwap", (event) => {
-        const target = (event as CustomEvent<{ target?: Element }>).detail
-            ?.target;
-        if (target !== list) return;
-        loading.textContent = "";
+    list.addEventListener("htmx:before:swap", (event) => {
+        const context = htmxContext(event);
+        const token = refreshToken(context?.sourceEvent);
+        const currentRevision = JSON.stringify(readOrderHistory());
+        if (
+            !isSuccessfulHtmxResponse(context) ||
+            !token ||
+            !state.isCurrent(token, currentRevision)
+        ) {
+            event.preventDefault();
+        }
+    });
+    list.addEventListener("htmx:after:swap", (event) => {
+        const token = refreshToken(htmxContext(event)?.sourceEvent);
+        if (
+            !token ||
+            !state.isCurrent(token, JSON.stringify(readOrderHistory()))
+        ) {
+            return;
+        }
         error.textContent = "";
     });
-    document.body.addEventListener("htmx:responseError", (event) => {
-        const detail = (
-            event as CustomEvent<{ elt?: Element; target?: Element }>
-        ).detail;
-        if (detail?.elt !== form && detail?.target !== list) return;
-        loading.textContent = "";
+    list.addEventListener("htmx:response:error", (event) => {
+        const token = refreshToken(htmxContext(event)?.sourceEvent);
+        if (
+            !token ||
+            !state.isCurrent(token, JSON.stringify(readOrderHistory()))
+        ) {
+            return;
+        }
+        list.replaceChildren();
         error.textContent = "Could not load order history.";
     });
 }

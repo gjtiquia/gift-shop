@@ -479,71 +479,113 @@ class CartPageState {
   }
 }
 
+// src/pages/scripts/partialRefreshState.ts
+function whenHtmxInitialized(element, operation) {
+  if (element.hasAttribute("data-htmx-powered")) {
+    operation();
+    return;
+  }
+  const handleInit = (event) => {
+    if (event.target !== element)
+      return;
+    element.removeEventListener("htmx:after:init", handleInit);
+    operation();
+  };
+  element.addEventListener("htmx:after:init", handleInit);
+}
+
+class PartialRefreshState {
+  generation = 0;
+  begin(revision) {
+    return { generation: ++this.generation, revision };
+  }
+  isCurrent(token, currentRevision) {
+    return token.generation === this.generation && token.revision === currentRevision;
+  }
+}
+function htmxContext(event) {
+  return event.detail?.ctx;
+}
+function refreshToken(event) {
+  const detail = event?.detail;
+  if (!detail || !Number.isSafeInteger(detail.generation) || typeof detail.revision !== "string") {
+    return null;
+  }
+  return {
+    generation: Number(detail.generation),
+    revision: detail.revision
+  };
+}
+function isSuccessfulHtmxResponse(context) {
+  return (context?.response?.status ?? 500) < 400;
+}
+
 // src/pages/scripts/cartPage.ts
 for (const page of document.querySelectorAll("[data-js-cartPage]")) {
   setupCartPage(page);
 }
 function setupCartPage(page) {
-  const contentsFormCandidate = page.querySelector("[data-js-cartContentsForm]");
   const payloadCandidate = page.querySelector("[data-js-cartPayload]");
   const contentsCandidate = page.querySelector("[data-js-cartContents]");
-  const loadingCandidate = page.querySelector("[data-js-cartLoading]");
   const errorCandidate = page.querySelector("[data-js-cartError]");
-  const checkoutFormCandidate = page.querySelector("[data-js-checkoutForm]");
-  if (!contentsFormCandidate || !payloadCandidate || !contentsCandidate || !loadingCandidate || !errorCandidate || !checkoutFormCandidate) {
+  if (!payloadCandidate || !contentsCandidate || !errorCandidate)
     return;
-  }
-  const contentsForm = contentsFormCandidate;
   const payload = payloadCandidate;
   const contents = contentsCandidate;
-  const loading = loadingCandidate;
   const errorElement = errorCandidate;
-  const checkoutForm = checkoutFormCandidate;
   const state = new CartPageState;
-  const refreshWhenReady = () => void refresh();
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", refreshWhenReady, {
-      once: true
-    });
-  } else {
-    refreshWhenReady();
-  }
+  let customerName = "";
+  whenHtmxInitialized(contents, refresh);
   window.addEventListener("storage", (event) => {
     if (event.key === cartStorageKey)
       refresh();
   });
   contents.addEventListener("click", handleContentsClick);
   contents.addEventListener("change", handleQuantityChange);
-  checkoutForm.addEventListener("submit", submitOrder);
-  document.body.addEventListener("htmx:afterSwap", handleAfterSwap);
-  document.body.addEventListener("htmx:responseError", handleResponseError);
-  async function refresh() {
+  contents.addEventListener("htmx:before:swap", handleBeforeSwap);
+  contents.addEventListener("htmx:after:swap", handleAfterSwap);
+  contents.addEventListener("htmx:response:error", handleResponseError);
+  page.addEventListener("submit", submitOrder);
+  function refresh() {
+    const nameInput = contents.querySelector('[data-js-checkoutForm] input[name="customerName"]');
+    if (nameInput)
+      customerName = nameInput.value;
     const cart = readCart();
-    state.beginRender(cart);
+    const token = state.beginRender(cart);
     payload.value = JSON.stringify(cart);
-    checkoutForm.hidden = Object.keys(cart).length === 0;
-    loading.textContent = "Loading cart…";
     errorElement.textContent = "";
-    contentsForm.requestSubmit();
+    contents.dispatchEvent(new CustomEvent("cart-refresh", {
+      bubbles: true,
+      detail: token
+    }));
   }
-  function handleAfterSwap(event) {
-    const target = event.detail?.target;
-    if (target !== contents)
-      return;
-    const rendered = contents.querySelector("[data-js-cartRendered]");
-    const currentRevision = cartRevision(readCart());
-    if (!rendered?.dataset.cartRevision || !state.acceptRenderedRevision(rendered.dataset.cartRevision, readCart())) {
-      refresh();
+  function handleBeforeSwap(event) {
+    const context = htmxContext(event);
+    if (!isSuccessfulHtmxResponse(context)) {
+      event.preventDefault();
       return;
     }
-    loading.textContent = "";
-    checkoutForm.hidden = Object.keys(readCart()).length === 0;
+    const token = refreshToken(context?.sourceEvent);
+    if (!token || !state.isCurrentRender(token, readCart())) {
+      event.preventDefault();
+    }
+  }
+  function handleAfterSwap() {
+    const rendered = contents.querySelector("[data-js-cartRendered]");
+    if (!rendered?.dataset.cartRevision || !state.acceptRenderedRevision(rendered.dataset.cartRevision, readCart())) {
+      errorElement.textContent = "The cart changed. Review the latest quantities before submitting.";
+      return;
+    }
+    const nameInput = contents.querySelector('[data-js-checkoutForm] input[name="customerName"]');
+    if (nameInput)
+      nameInput.value = customerName;
+    errorElement.textContent = "";
   }
   function handleResponseError(event) {
-    const detail = event.detail;
-    if (detail?.elt !== contentsForm && detail?.target !== contents)
+    const token = refreshToken(htmxContext(event)?.sourceEvent);
+    if (!token || !state.isCurrentRender(token, readCart()))
       return;
-    loading.textContent = "";
+    contents.replaceChildren();
     errorElement.textContent = "Could not load the cart.";
   }
   function handleContentsClick(event) {
@@ -587,9 +629,13 @@ function setupCartPage(page) {
   async function changeQuantity(inventoryId, quantity) {
     await setCartQuantity(inventoryId, quantity);
     document.dispatchEvent(new CustomEvent("cartchange"));
-    await refresh();
+    refresh();
   }
   async function submitOrder(event) {
+    const checkoutForm = event.target;
+    if (!(checkoutForm instanceof HTMLFormElement) || !checkoutForm.matches("[data-js-checkoutForm]")) {
+      return;
+    }
     event.preventDefault();
     if (!checkoutForm.reportValidity())
       return;
@@ -653,38 +699,48 @@ for (const page of document.querySelectorAll("[data-js-ordersPage]")) {
   setupOrdersPage(page);
 }
 function setupOrdersPage(page) {
-  const form = page.querySelector("[data-js-ordersHistoryForm]");
   const payload = page.querySelector("[data-js-ordersHistoryPayload]");
-  const loading = page.querySelector("[data-js-ordersLoading]");
-  const error = page.querySelector("[data-js-ordersError]");
   const list = page.querySelector("[data-js-ordersList]");
-  if (!form || !payload || !loading || !error || !list)
+  const error = page.querySelector("[data-js-ordersError]");
+  if (!payload || !list || !error)
     return;
+  const state = new PartialRefreshState;
   const load = () => {
-    payload.value = JSON.stringify(readOrderHistory());
-    form.requestSubmit();
+    const revision = JSON.stringify(readOrderHistory());
+    const token = state.begin(revision);
+    payload.value = revision;
+    error.textContent = "";
+    list.dispatchEvent(new CustomEvent("order-history-refresh", {
+      bubbles: true,
+      detail: token
+    }));
   };
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", load, { once: true });
-  } else {
-    load();
-  }
+  whenHtmxInitialized(list, load);
   window.addEventListener("storage", (event) => {
     if (event.key === orderHistoryStorageKey)
       load();
   });
-  document.body.addEventListener("htmx:afterSwap", (event) => {
-    const target = event.detail?.target;
-    if (target !== list)
+  list.addEventListener("htmx:before:swap", (event) => {
+    const context = htmxContext(event);
+    const token = refreshToken(context?.sourceEvent);
+    const currentRevision = JSON.stringify(readOrderHistory());
+    if (!isSuccessfulHtmxResponse(context) || !token || !state.isCurrent(token, currentRevision)) {
+      event.preventDefault();
+    }
+  });
+  list.addEventListener("htmx:after:swap", (event) => {
+    const token = refreshToken(htmxContext(event)?.sourceEvent);
+    if (!token || !state.isCurrent(token, JSON.stringify(readOrderHistory()))) {
       return;
-    loading.textContent = "";
+    }
     error.textContent = "";
   });
-  document.body.addEventListener("htmx:responseError", (event) => {
-    const detail = event.detail;
-    if (detail?.elt !== form && detail?.target !== list)
+  list.addEventListener("htmx:response:error", (event) => {
+    const token = refreshToken(htmxContext(event)?.sourceEvent);
+    if (!token || !state.isCurrent(token, JSON.stringify(readOrderHistory()))) {
       return;
-    loading.textContent = "";
+    }
+    list.replaceChildren();
     error.textContent = "Could not load order history.";
   });
 }

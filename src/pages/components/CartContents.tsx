@@ -132,6 +132,26 @@ export function CartContents({
             <p class="text-right text-lg font-semibold">
                 Total: {formatPrice(total)}
             </p>
+            <form
+                class="grid max-w-md gap-4 rounded-lg border border-gray-200 bg-white p-4 shadow-sm"
+                data-js-checkoutForm
+            >
+                <label class="grid gap-1 text-sm font-medium text-gray-800">
+                    Customer name
+                    <input
+                        class="rounded-md border border-gray-300 px-3 py-2 text-gray-900"
+                        name="customerName"
+                        maxlength="200"
+                        required
+                    />
+                </label>
+                <button
+                    class="rounded-md bg-gray-950 px-4 py-2 font-medium text-white disabled:bg-gray-400"
+                    type="submit"
+                >
+                    Submit order
+                </button>
+            </form>
         </div>
     );
 }
