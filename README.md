@@ -144,6 +144,10 @@ notes
 ### typescript
 - function ordering, as pragmatic as possible, order from high level to low level functions, so it reads nicely
 
+#### frontend scripts
+- reference [rsjs - Reasonable System for JavaScript Structure](https://ricostacruz.com/rsjs/)
+    - `data-js-scriptName` attribute on elements with `scriptName.ts` as the corresponding script for that attribute
+
 ### tailwind classes
 - avoid margins as much as pragmatically possible
 
