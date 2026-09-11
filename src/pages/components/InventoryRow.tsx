@@ -45,17 +45,6 @@ export function InventoryRow({ item }: { item: InventoryItem }) {
                             accept="image/jpeg,image/png,image/webp"
                         />
                     </label>
-                    {item.imageId !== null ? (
-                        <label class="flex items-center gap-2 text-xs text-gray-700">
-                            <input
-                                form={updateFormId}
-                                type="checkbox"
-                                name="removeImage"
-                                value="1"
-                            />
-                            Remove image
-                        </label>
-                    ) : null}
                 </div>
             </td>
             <td class="px-3 py-4">

@@ -424,7 +424,7 @@ test("an admin can create and update inventory without an image", async () => {
     database.close();
 });
 
-test("an admin can add, replace, remove, and retrieve an inventory image", async () => {
+test("an admin can add, replace, and retrieve an inventory image", async () => {
     const loginResponse = await postPassword("correct-password");
     const cookie = loginResponse.headers.get("set-cookie")?.split(";", 1)[0];
     if (!cookie) throw new Error("login did not set a session cookie");
@@ -565,32 +565,6 @@ test("an admin can add, replace, remove, and retrieve an inventory image", async
         .get(replaced!.imageId);
     if (!replacementImage) throw new Error("replacement image was not created");
 
-    const removeForm = inventoryForm("Image gift");
-    removeForm.set("removeImage", "1");
-    const removeResponse = await requestInventory(
-        "PUT",
-        `http://localhost/api/inventory/${created.id}`,
-        removeForm,
-    );
-    expect(removeResponse.status).toBe(200);
-    expect(
-        database
-            .query<{ imageId: number | null }, [number]>(
-                "SELECT imageId FROM inventory_table WHERE id = ?",
-            )
-            .get(created.id)?.imageId,
-    ).toBeNull();
-    expect(
-        database
-            .query<{ count: number }, []>(
-                "SELECT COUNT(*) AS count FROM images_table",
-            )
-            .get()?.count,
-    ).toBe(0);
-    expect(
-        existsSync(join(imageDataDirectory, replacementImage.filename)),
-    ).toBe(false);
-
     const invalidForm = inventoryForm("Invalid image gift");
     invalidForm.set("image", new File(["not an image"], "fake.png"));
     const invalidResponse = await requestInventory(
@@ -694,7 +668,7 @@ test("an admin can add, replace, remove, and retrieve an inventory image", async
             .get(directlyDeleted.imageId)?.count,
     ).toBe(0);
 
-    await app.handle(
+    const deleteResponse = await app.handle(
         new Request(`http://localhost/api/inventory/${created.id}`, {
             method: "DELETE",
             headers: {
@@ -704,5 +678,16 @@ test("an admin can add, replace, remove, and retrieve an inventory image", async
             },
         }),
     );
+    expect(deleteResponse.status).toBe(200);
+    expect(
+        existsSync(join(imageDataDirectory, replacementImage.filename)),
+    ).toBe(false);
+    expect(
+        database
+            .query<{ count: number }, []>(
+                "SELECT COUNT(*) AS count FROM images_table",
+            )
+            .get()?.count,
+    ).toBe(0);
     database.close();
 });

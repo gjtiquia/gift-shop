@@ -103,8 +103,6 @@ export async function updateInventory(
                     .returning({ id: imagesTable.id })
                     .all();
                 imageId = image.id;
-            } else if (form.removeImage === "1") {
-                imageId = null;
             }
 
             const [updatedItem] = transaction

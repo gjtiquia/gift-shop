@@ -6,7 +6,6 @@ export const inventoryFormSchema = t.Object({
     quantity: t.Optional(t.String()),
     adminNotes: t.Optional(t.String()),
     image: t.Optional(t.File()),
-    removeImage: t.Optional(t.String()),
 });
 
 export type InventoryForm = Static<typeof inventoryFormSchema>;
