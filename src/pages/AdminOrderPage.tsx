@@ -45,7 +45,6 @@ export function AdminOrderPage({
                 <p
                     class="rounded-md border border-red-200 bg-red-50 p-3 font-medium text-red-800"
                     role="alert"
-                    data-js-nativeAlert
                 >
                     {error}
                 </p>

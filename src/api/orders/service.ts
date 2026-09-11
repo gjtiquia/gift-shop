@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, sql, type SQL } from "drizzle-orm";
+import { and, desc, eq, sql, type SQL } from "drizzle-orm";
 import {
     cartItemsTable,
     db,
@@ -40,7 +40,7 @@ export interface OrderView {
     items: OrderItemView[];
 }
 
-export type CreateOrderResult =
+export type CheckoutResult =
     | { status: "success"; order: OrderView; created: boolean }
     | { status: "invalid"; message: string };
 
@@ -57,118 +57,10 @@ export type FulfillOrderResult =
           }>;
       };
 
-export async function createOrder(input: {
-    customerName: string;
-    submissionId: string;
-    items: SubmittedOrderItem[];
-    visitorId?: string;
-}): Promise<CreateOrderResult> {
-    const customerName = input.customerName.trim();
-    const items = normalizeItems(input.items);
-    if (
-        !customerName ||
-        customerName.length > 200 ||
-        !isSubmissionId(input.submissionId) ||
-        !items
-    ) {
-        return {
-            status: "invalid",
-            message: "Enter a name and valid cart quantities.",
-        };
-    }
-
-    const [existing] = await db
-        .select({ id: ordersTable.id, visitorId: ordersTable.visitorId })
-        .from(ordersTable)
-        .where(eq(ordersTable.submissionId, input.submissionId))
-        .limit(1);
-    if (existing) {
-        if (existing.visitorId !== (input.visitorId ?? null)) {
-            return { status: "invalid", message: "Invalid submission." };
-        }
-        const order = await getOrder(existing.id);
-        if (order) return { status: "success", order, created: false };
-    }
-
-    const inventory = await db
-        .select({
-            id: inventoryTable.id,
-            name: inventoryTable.name,
-            quantity: inventoryTable.quantity,
-        })
-        .from(inventoryTable)
-        .where(
-            inArray(
-                inventoryTable.id,
-                items.map((item) => item.inventoryId),
-            ),
-        );
-    const inventoryById = new Map(inventory.map((item) => [item.id, item]));
-    for (const item of items) {
-        const current = inventoryById.get(item.inventoryId);
-        if (!current) continue;
-        if (item.quantity > current.quantity) {
-            return {
-                status: "invalid",
-                message: `${current.name} has only ${current.quantity} available.`,
-            };
-        }
-    }
-
-    const now = new Date();
-    const id = crypto.randomUUID();
-    try {
-        db.transaction((transaction) => {
-            transaction
-                .insert(ordersTable)
-                .values({
-                    id,
-                    submissionId: input.submissionId,
-                    visitorId: input.visitorId,
-                    customerName,
-                    status: "unfulfilled",
-                    createdAt: now,
-                    lastModifiedAt: now,
-                })
-                .run();
-            transaction
-                .insert(orderItemsTable)
-                .values(
-                    items.map((item) => ({
-                        orderId: id,
-                        inventoryId: item.inventoryId,
-                        quantity: item.quantity,
-                        adminNotes: item.adminNotes || null,
-                        createdAt: now,
-                        lastModifiedAt: now,
-                    })),
-                )
-                .run();
-        });
-    } catch (error) {
-        // A repeated idempotency key can race in another request.
-        const [racedOrder] = await db
-            .select({ id: ordersTable.id, visitorId: ordersTable.visitorId })
-            .from(ordersTable)
-            .where(eq(ordersTable.submissionId, input.submissionId))
-            .limit(1);
-        if (!racedOrder || racedOrder.visitorId !== (input.visitorId ?? null)) {
-            throw error;
-        }
-        const order = await getOrder(racedOrder.id);
-        if (!order) throw error;
-        return { status: "success", order, created: false };
-    }
-
-    const order = await getOrder(id);
-    if (!order) throw new Error("Created order could not be loaded.");
-    return { status: "success", order, created: true };
-}
-
 export async function checkoutCart(
     visitorId: string,
     input: { customerName: string; submissionId: string },
-): Promise<CreateOrderResult> {
+): Promise<CheckoutResult> {
     const customerName = input.customerName.trim();
     if (
         !customerName ||
@@ -287,16 +179,6 @@ export async function checkoutCart(
 export async function getOrder(id: string): Promise<OrderView | null> {
     const orders = await loadOrders(eq(ordersTable.id, id));
     return orders[0] ?? null;
-}
-
-export async function getOrders(ids: string[]): Promise<OrderView[]> {
-    const validIds = Array.from(new Set(ids.filter(isOrderId))).slice(0, 100);
-    if (validIds.length === 0) return [];
-    const orders = await loadOrders(inArray(ordersTable.id, validIds));
-    const position = new Map(validIds.map((id, index) => [id, index]));
-    return orders.sort(
-        (a, b) => (position.get(a.id) ?? 0) - (position.get(b.id) ?? 0),
-    );
 }
 
 export async function getVisitorOrder(visitorId: string, orderId: string) {
@@ -522,13 +404,19 @@ function normalizeItems(items: SubmittedOrderItem[]) {
         }
         const existing = normalized.get(item.inventoryId);
         const quantity = (existing?.quantity ?? 0) + item.quantity;
-        if (!Number.isSafeInteger(quantity)) return null;
+        const combinedAdminNotes =
+            [existing?.adminNotes, adminNotes].filter(Boolean).join("\n") ||
+            undefined;
+        if (
+            !Number.isSafeInteger(quantity) ||
+            (combinedAdminNotes?.length ?? 0) > 2_000
+        ) {
+            return null;
+        }
         normalized.set(item.inventoryId, {
             inventoryId: item.inventoryId,
             quantity,
-            adminNotes:
-                [existing?.adminNotes, adminNotes].filter(Boolean).join("\n") ||
-                undefined,
+            adminNotes: combinedAdminNotes,
         });
     }
     return Array.from(normalized.values());

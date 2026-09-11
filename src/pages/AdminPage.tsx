@@ -1,7 +1,7 @@
 import { html, Html } from "@elysia/html";
 import { asc } from "drizzle-orm";
 import { db, inventoryTable } from "../db";
-import { InventoryRow } from "./components/InventoryRow";
+import { InventoryTableBody } from "./components/InventoryRow";
 import { PageLayout } from "./layouts/PageLayout";
 import { countUnfulfilledOrders } from "../api/orders/service";
 
@@ -143,82 +143,87 @@ export async function AdminPage({ error }: AdminPageProps = {}) {
                 </form>
             </section>
 
-            <section class="grid gap-4" data-js-inventoryEditor>
-                <div class="flex flex-wrap items-center justify-between gap-3">
-                    <h2 class="text-xl font-semibold text-gray-950">
-                        Inventory
-                    </h2>
-                    <div class="flex flex-wrap gap-2">
-                        <button
-                            class="rounded-md bg-gray-950 px-4 py-2 font-medium text-white"
-                            data-js-inventoryEdit
-                            type="button"
-                        >
-                            Edit
-                        </button>
-                        <button
-                            class="rounded-md bg-gray-950 px-4 py-2 font-medium text-white"
-                            data-js-inventorySave
-                            type="button"
-                            hidden
-                        >
-                            Save changes
-                        </button>
-                        <button
-                            class="rounded-md border border-gray-300 px-4 py-2 font-medium text-gray-800"
-                            data-js-inventoryDiscard
-                            type="button"
-                            hidden
-                        >
-                            Discard changes
-                        </button>
+            <section data-js-inventoryEditor>
+                <form
+                    class="grid gap-4"
+                    method="post"
+                    action="/api/inventory/bulk"
+                    enctype="multipart/form-data"
+                    hx-post="/api/inventory/bulk"
+                    hx-target="#inventory-table-body"
+                    hx-swap="outerHTML"
+                    data-htmx-error="#inventory-error"
+                    data-js-inventoryBulkForm
+                >
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <h2 class="text-xl font-semibold text-gray-950">
+                            Inventory
+                        </h2>
+                        <div class="flex flex-wrap gap-2">
+                            <button
+                                class="rounded-md bg-gray-950 px-4 py-2 font-medium text-white"
+                                data-js-inventoryEdit
+                                type="button"
+                            >
+                                Edit
+                            </button>
+                            <button
+                                class="rounded-md bg-gray-950 px-4 py-2 font-medium text-white"
+                                data-js-inventorySave
+                                type="submit"
+                                hidden
+                            >
+                                Save changes
+                            </button>
+                            <button
+                                class="rounded-md border border-gray-300 px-4 py-2 font-medium text-gray-800"
+                                data-js-inventoryDiscard
+                                type="button"
+                                hidden
+                            >
+                                Discard changes
+                            </button>
+                        </div>
                     </div>
-                </div>
-                <div class="overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm">
-                    <table class="min-w-245 border-collapse text-left text-sm">
-                        <thead class="bg-gray-100 text-gray-700">
-                            <tr>
-                                <th class="px-3 py-3" scope="col">
-                                    ID
-                                </th>
-                                <th class="px-3 py-3" scope="col">
-                                    Image
-                                </th>
-                                <th class="px-3 py-3" scope="col">
-                                    Name
-                                </th>
-                                <th class="px-3 py-3" scope="col">
-                                    Price
-                                </th>
-                                <th class="px-3 py-3" scope="col">
-                                    Quantity
-                                </th>
-                                <th class="px-3 py-3" scope="col">
-                                    Hidden
-                                </th>
-                                <th class="px-3 py-3" scope="col">
-                                    Notes
-                                </th>
-                                <th
-                                    class="px-3 py-3"
-                                    scope="col"
-                                    data-js-inventoryEditOnly
-                                    hidden
-                                >
-                                    Actions
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody
-                            id="inventory-table-body"
-                            class="divide-y divide-gray-200"
-                        >
-                            {items.map((item) => (
-                                <InventoryRow item={item} />
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+                    <div class="overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm">
+                        <table class="min-w-245 border-collapse text-left text-sm">
+                            <thead class="bg-gray-100 text-gray-700">
+                                <tr>
+                                    <th class="px-3 py-3" scope="col">
+                                        ID
+                                    </th>
+                                    <th class="px-3 py-3" scope="col">
+                                        Image
+                                    </th>
+                                    <th class="px-3 py-3" scope="col">
+                                        Name
+                                    </th>
+                                    <th class="px-3 py-3" scope="col">
+                                        Price
+                                    </th>
+                                    <th class="px-3 py-3" scope="col">
+                                        Quantity
+                                    </th>
+                                    <th class="px-3 py-3" scope="col">
+                                        Hidden
+                                    </th>
+                                    <th class="px-3 py-3" scope="col">
+                                        Notes
+                                    </th>
+                                    <th
+                                        class="px-3 py-3"
+                                        scope="col"
+                                        data-js-inventoryEditOnly
+                                        hidden
+                                    >
+                                        Actions
+                                    </th>
+                                </tr>
+                            </thead>
+                            <InventoryTableBody items={items} />
+                        </table>
+                    </div>
+                </form>
             </section>
         </PageLayout>
     );

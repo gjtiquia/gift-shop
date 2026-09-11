@@ -14,15 +14,31 @@ export interface InventoryItem {
 const tableInputClasses =
     "w-full min-w-32 rounded-md border border-gray-300 px-2 py-2 text-gray-900 read-only:border-transparent read-only:bg-transparent read-only:px-0";
 
+export function InventoryTableBody({ items }: { items: InventoryItem[] }) {
+    return (
+        <tbody id="inventory-table-body" class="divide-y divide-gray-200">
+            {items.map((item) => (
+                <InventoryRow item={item} />
+            ))}
+        </tbody>
+    );
+}
+
 export function InventoryRow({ item }: { item: InventoryItem }) {
-    const updateFormId = `update-inventory-${item.id}`;
     const imagePreviewId = `inventory-image-preview-${item.id}`;
     const imageFilenameId = `inventory-image-filename-${item.id}`;
     const noImageId = `inventory-no-image-${item.id}`;
 
     return (
         <tr id={`inventory-${item.id}`} class="align-top">
-            <td class="px-3 py-4 text-gray-600">{item.id}</td>
+            <td class="px-3 py-4 text-gray-600">
+                {item.id}
+                <input
+                    type="hidden"
+                    name="inventoryId"
+                    value={String(item.id)}
+                />
+            </td>
             <td class="px-3 py-4">
                 <div class="grid w-40 gap-2">
                     <img
@@ -61,9 +77,8 @@ export function InventoryRow({ item }: { item: InventoryItem }) {
                             : "Replace image (optional)"}
                         <input
                             class="block w-full text-xs file:mb-1 file:rounded file:border-0 file:bg-gray-200 file:px-2 file:py-1"
-                            form={updateFormId}
                             type="file"
-                            name="image"
+                            name={`image.${item.id}`}
                             accept="image/jpeg,image/png,image/webp"
                             data-js-imagePreview
                             data-image-preview={imagePreviewId}
@@ -82,8 +97,7 @@ export function InventoryRow({ item }: { item: InventoryItem }) {
             <td class="px-3 py-4">
                 <input
                     class={tableInputClasses}
-                    form={updateFormId}
-                    name="name"
+                    name={`name.${item.id}`}
                     aria-label={`Name for inventory item ${item.id}`}
                     value={item.name}
                     data-js-inventoryField
@@ -94,8 +108,7 @@ export function InventoryRow({ item }: { item: InventoryItem }) {
             <td class="px-3 py-4">
                 <input
                     class={tableInputClasses}
-                    form={updateFormId}
-                    name="price"
+                    name={`price.${item.id}`}
                     aria-label={`Price for inventory item ${item.id}`}
                     inputmode="decimal"
                     value={formatPrice(item.priceCentsX10)}
@@ -107,9 +120,8 @@ export function InventoryRow({ item }: { item: InventoryItem }) {
             <td class="px-3 py-4">
                 <input
                     class="w-24 rounded-md border border-gray-300 px-2 py-2 text-gray-900 read-only:border-transparent read-only:bg-transparent read-only:px-0"
-                    form={updateFormId}
                     type="number"
-                    name="quantity"
+                    name={`quantity.${item.id}`}
                     aria-label={`Quantity for inventory item ${item.id}`}
                     min="0"
                     step="1"
@@ -122,9 +134,8 @@ export function InventoryRow({ item }: { item: InventoryItem }) {
             <td class="px-3 py-4">
                 <input
                     class="size-4 rounded border-gray-300"
-                    form={updateFormId}
                     type="checkbox"
-                    name="hidden"
+                    name={`hidden.${item.id}`}
                     value="true"
                     aria-label={`Hide inventory item ${item.id} from catalogue`}
                     checked={item.hidden}
@@ -135,8 +146,7 @@ export function InventoryRow({ item }: { item: InventoryItem }) {
             <td class="px-3 py-4">
                 <input
                     class={tableInputClasses}
-                    form={updateFormId}
-                    name="adminNotes"
+                    name={`adminNotes.${item.id}`}
                     aria-label={`Notes for inventory item ${item.id}`}
                     value={item.adminNotes ?? ""}
                     data-js-inventoryField
@@ -144,25 +154,16 @@ export function InventoryRow({ item }: { item: InventoryItem }) {
                 />
             </td>
             <td class="px-3 py-4" data-js-inventoryEditOnly hidden>
-                <div>
-                    <form
-                        id={updateFormId}
-                        method="post"
-                        action={`/api/inventory/${item.id}`}
-                        enctype="multipart/form-data"
-                        data-js-inventoryUpdateForm
-                    ></form>
-                    <button
-                        class="rounded-md border border-red-300 px-3 py-2 font-medium text-red-700"
-                        type="button"
-                        hx-delete={`/api/inventory/${item.id}`}
-                        hx-target="closest tr"
-                        hx-swap="delete"
-                        hx-confirm="Delete this item?"
-                    >
-                        Delete
-                    </button>
-                </div>
+                <button
+                    class="rounded-md border border-red-300 px-3 py-2 font-medium text-red-700"
+                    type="button"
+                    hx-delete={`/api/inventory/${item.id}`}
+                    hx-target="closest tr"
+                    hx-swap="delete"
+                    hx-confirm="Delete this item?"
+                >
+                    Delete
+                </button>
             </td>
         </tr>
     );

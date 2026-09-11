@@ -1,24 +1,24 @@
 const previewUrls = new WeakMap<HTMLInputElement, string>();
-const imageInputs = Array.from(
-    document.querySelectorAll<HTMLInputElement>("[data-js-imagePreview]"),
-);
 
-if (imageInputs.length > 0) setupImagePreviews();
-
-function setupImagePreviews() {
-    for (const input of imageInputs) {
-        input.addEventListener("input", () => updateImagePreview(input));
-        input.addEventListener("change", () => updateImagePreview(input));
-    }
-
-    // Some mobile camera pickers restore the page before dispatching `change`.
-    window.addEventListener("focus", () => {
-        window.setTimeout(refreshImagePreviews, 300);
-    });
-    document.addEventListener("visibilitychange", () => {
-        if (!document.hidden) window.setTimeout(refreshImagePreviews, 300);
+for (const eventName of ["input", "change"]) {
+    document.addEventListener(eventName, (event) => {
+        const input = event.target;
+        if (
+            input instanceof HTMLInputElement &&
+            input.matches("[data-js-imagePreview]")
+        ) {
+            updateImagePreview(input);
+        }
     });
 }
+
+// Some mobile camera pickers restore the page before dispatching `change`.
+window.addEventListener("focus", () => {
+    window.setTimeout(refreshImagePreviews, 300);
+});
+document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) window.setTimeout(refreshImagePreviews, 300);
+});
 
 export function updateImagePreview(input: HTMLInputElement) {
     const previewId = input.dataset.imagePreview;
@@ -63,5 +63,9 @@ export function updateImagePreview(input: HTMLInputElement) {
 }
 
 function refreshImagePreviews() {
-    for (const input of imageInputs) updateImagePreview(input);
+    for (const input of document.querySelectorAll<HTMLInputElement>(
+        "[data-js-imagePreview]",
+    )) {
+        updateImagePreview(input);
+    }
 }

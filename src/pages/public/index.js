@@ -1,21 +1,20 @@
 // src/pages/scripts/imagePreview.ts
 var previewUrls = new WeakMap;
-var imageInputs = Array.from(document.querySelectorAll("[data-js-imagePreview]"));
-if (imageInputs.length > 0)
-  setupImagePreviews();
-function setupImagePreviews() {
-  for (const input of imageInputs) {
-    input.addEventListener("input", () => updateImagePreview(input));
-    input.addEventListener("change", () => updateImagePreview(input));
-  }
-  window.addEventListener("focus", () => {
-    window.setTimeout(refreshImagePreviews, 300);
-  });
-  document.addEventListener("visibilitychange", () => {
-    if (!document.hidden)
-      window.setTimeout(refreshImagePreviews, 300);
+for (const eventName of ["input", "change"]) {
+  document.addEventListener(eventName, (event) => {
+    const input = event.target;
+    if (input instanceof HTMLInputElement && input.matches("[data-js-imagePreview]")) {
+      updateImagePreview(input);
+    }
   });
 }
+window.addEventListener("focus", () => {
+  window.setTimeout(refreshImagePreviews, 300);
+});
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden)
+    window.setTimeout(refreshImagePreviews, 300);
+});
 function updateImagePreview(input) {
   const previewId = input.dataset.imagePreview;
   if (!previewId)
@@ -55,8 +54,9 @@ function updateImagePreview(input) {
   }
 }
 function refreshImagePreviews() {
-  for (const input of imageInputs)
+  for (const input of document.querySelectorAll("[data-js-imagePreview]")) {
     updateImagePreview(input);
+  }
 }
 
 // src/pages/scripts/inventoryEditor.ts
@@ -64,29 +64,25 @@ for (const section of document.querySelectorAll("[data-js-inventoryEditor]")) {
   setupInventoryEditor(section);
 }
 function setupInventoryEditor(section) {
-  const editButton = section.querySelector("[data-js-inventoryEdit]");
-  const saveButton = section.querySelector("[data-js-inventorySave]");
-  const discardButton = section.querySelector("[data-js-inventoryDiscard]");
-  if (!editButton || !saveButton || !discardButton)
+  const formCandidate = section.querySelector("[data-js-inventoryBulkForm]");
+  const editCandidate = section.querySelector("[data-js-inventoryEdit]");
+  const saveCandidate = section.querySelector("[data-js-inventorySave]");
+  const discardCandidate = section.querySelector("[data-js-inventoryDiscard]");
+  if (!formCandidate || !editCandidate || !saveCandidate || !discardCandidate)
     return;
-  const edit = editButton;
-  const save = saveButton;
-  const discard = discardButton;
-  const updateForms = Array.from(section.querySelectorAll("form[data-js-inventoryUpdateForm]"));
-  const dirtyForms = new Set;
-  section.addEventListener("input", markChangedForm);
-  section.addEventListener("change", markChangedForm);
+  const form = formCandidate;
+  const edit = editCandidate;
+  const save = saveCandidate;
+  const discard = discardCandidate;
   edit.addEventListener("click", () => setEditMode(true));
   discard.addEventListener("click", discardChanges);
-  save.addEventListener("click", saveChanges);
-  function markChangedForm(event) {
-    const target = event.target;
-    if (!(target instanceof HTMLInputElement) || !target.form)
-      return;
-    if (!target.form.matches("[data-js-inventoryUpdateForm]"))
-      return;
-    dirtyForms.add(target.form);
-  }
+  section.addEventListener("inventory-saved", () => {
+    const errorSelector = form.dataset.htmxError;
+    const error = errorSelector ? document.querySelector(errorSelector) : null;
+    if (error)
+      error.textContent = "";
+    setEditMode(false);
+  });
   function setEditMode(enabled) {
     for (const input of section.querySelectorAll("[data-js-inventoryField]")) {
       input.readOnly = !enabled;
@@ -102,50 +98,12 @@ function setupInventoryEditor(section) {
     discard.hidden = !enabled;
   }
   function discardChanges() {
-    for (const form of updateForms)
-      form.reset();
-    dirtyForms.clear();
+    form.reset();
     for (const input of section.querySelectorAll("[data-js-imagePreview]")) {
       updateImagePreview(input);
     }
     setEditMode(false);
   }
-  async function saveChanges() {
-    if (dirtyForms.size === 0) {
-      setEditMode(false);
-      return;
-    }
-    for (const form of dirtyForms) {
-      if (!form.reportValidity())
-        return;
-    }
-    save.disabled = true;
-    discard.disabled = true;
-    setInventoryError("");
-    try {
-      for (const form of dirtyForms) {
-        const response = await fetch(form.action, {
-          method: form.method,
-          body: new FormData(form),
-          credentials: "same-origin",
-          headers: { "HX-Request": "true" }
-        });
-        if (!response.ok) {
-          throw new Error(await response.text() || "Could not save inventory changes.");
-        }
-      }
-      window.location.reload();
-    } catch (error) {
-      setInventoryError(error instanceof Error ? error.message : "Could not save inventory changes.");
-      save.disabled = false;
-      discard.disabled = false;
-    }
-  }
-}
-function setInventoryError(message) {
-  const error = document.querySelector("[data-js-inventoryError]");
-  if (error)
-    error.textContent = message;
 }
 
 // src/pages/scripts/orderEditor.ts
@@ -184,7 +142,30 @@ function setupOrderEditor(section) {
   }
 }
 
-// src/pages/scripts/nativeAlert.ts
-for (const element of document.querySelectorAll("[data-js-nativeAlert]")) {
-  window.alert(element.textContent?.trim() || "The request could not be completed.");
+// src/pages/scripts/htmxErrors.ts
+document.addEventListener("htmx:before:swap", (event) => {
+  const context = htmxContext(event);
+  if ((context?.response?.status ?? 0) < 500)
+    return;
+  event.preventDefault();
+  showUnexpectedError(event, context);
+});
+document.addEventListener("htmx:error", (event) => {
+  const context = htmxContext(event);
+  if (context?.response)
+    return;
+  showUnexpectedError(event, context);
+});
+function showUnexpectedError(event, context) {
+  const source = context?.sourceElement ?? (event.target instanceof Element ? event.target : null);
+  const owner = source?.closest("[data-htmx-error]");
+  const selector = owner?.dataset.htmxError;
+  if (!selector)
+    return;
+  const error = document.querySelector(selector);
+  if (error)
+    error.textContent = "Could not complete the request. Try again.";
+}
+function htmxContext(event) {
+  return event.detail?.ctx;
 }

@@ -1,16 +1,16 @@
 import assert from "node:assert/strict";
 import { eq } from "drizzle-orm";
 import {
-    createOrder,
+    checkoutCart,
     editOrder,
     fulfillOrder,
     getOrder,
     rejectOrder,
     restoreOrder,
 } from "./service";
-import { publicOrder } from "./index";
 import { pages } from "../../pages";
 import {
+    cartItemsTable,
     db,
     inventoryTable,
     orderItemsTable,
@@ -26,6 +26,43 @@ async function reset() {
     await db.delete(orderItemsTable);
     await db.delete(ordersTable);
     await db.delete(inventoryTable);
+}
+
+async function addVisitor() {
+    const token = await createSessionToken();
+    const now = new Date();
+    await db.insert(visitorSessionsTable).values({
+        id: token.id,
+        secretHash: Buffer.from(token.secretHash),
+        createdAt: now,
+        lastMutatedAt: now,
+    });
+    return token;
+}
+
+async function checkoutOrder(
+    input: {
+        customerName: string;
+        submissionId: string;
+        items: Array<{ inventoryId: number; quantity: number }>;
+    },
+    visitorId?: string,
+) {
+    const resolvedVisitorId = visitorId ?? (await addVisitor()).id;
+    const now = new Date();
+    await db.insert(cartItemsTable).values(
+        input.items.map((item) => ({
+            visitorId: resolvedVisitorId,
+            inventoryId: item.inventoryId,
+            quantity: item.quantity,
+            createdAt: now,
+            lastModifiedAt: now,
+        })),
+    );
+    return checkoutCart(resolvedVisitorId, {
+        customerName: input.customerName,
+        submissionId: input.submissionId,
+    });
 }
 
 async function addInventory(name: string, quantity: number) {
@@ -46,12 +83,12 @@ async function addInventory(name: string, quantity: number) {
 
 await reset();
 const oversubscribedItem = await addInventory("Gift", 3);
-const first = await createOrder({
+const first = await checkoutOrder({
     customerName: "A",
     submissionId: crypto.randomUUID(),
     items: [{ inventoryId: oversubscribedItem.id, quantity: 3 }],
 });
-const second = await createOrder({
+const second = await checkoutOrder({
     customerName: "B",
     submissionId: crypto.randomUUID(),
     items: [{ inventoryId: oversubscribedItem.id, quantity: 3 }],
@@ -67,8 +104,12 @@ const retryInput = {
     submissionId: crypto.randomUUID(),
     items: [{ inventoryId: retryItem.id, quantity: 1 }],
 };
-const retryFirst = await createOrder(retryInput);
-const retrySecond = await createOrder(retryInput);
+const retryVisitor = await addVisitor();
+const retryFirst = await checkoutOrder(retryInput, retryVisitor.id);
+const retrySecond = await checkoutCart(retryVisitor.id, {
+    customerName: retryInput.customerName,
+    submissionId: retryInput.submissionId,
+});
 assert.equal(retryFirst.status, "success");
 assert.equal(retrySecond.status, "success");
 if (retryFirst.status === "success" && retrySecond.status === "success") {
@@ -79,7 +120,7 @@ assert.equal((await db.select().from(ordersTable)).length, 1);
 
 await reset();
 const fulfilledItem = await addInventory("Gift", 5);
-const fulfilled = await createOrder({
+const fulfilled = await checkoutOrder({
     customerName: "Customer",
     submissionId: crypto.randomUUID(),
     items: [{ inventoryId: fulfilledItem.id, quantity: 2 }],
@@ -99,7 +140,7 @@ assert.equal((await getOrder(fulfilled.order.id))?.status, "fulfilled");
 await reset();
 const enough = await addInventory("Enough", 4);
 const short = await addInventory("Short", 1);
-const insufficient = await createOrder({
+const insufficient = await checkoutOrder({
     customerName: "Customer",
     submissionId: crypto.randomUUID(),
     items: [
@@ -129,7 +170,7 @@ assert.equal((await getOrder(insufficient.order.id))?.status, "unfulfilled");
 
 await reset();
 const rejectedItem = await addInventory("Gift", 2);
-const rejected = await createOrder({
+const rejected = await checkoutOrder({
     customerName: "Customer",
     submissionId: crypto.randomUUID(),
     items: [{ inventoryId: rejectedItem.id, quantity: 1 }],
@@ -147,31 +188,47 @@ assert.equal((await getOrder(rejected.order.id))?.rejectedAt, null);
 await reset();
 const kept = await addInventory("Kept", 5);
 const deleted = await addInventory("Deleted", 2);
-await db.delete(inventoryTable).where(eq(inventoryTable.id, deleted.id));
-const visitorToken = await createSessionToken();
-const visitorCreatedAt = new Date();
-await db.insert(visitorSessionsTable).values({
-    id: visitorToken.id,
-    secretHash: Buffer.from(visitorToken.secretHash),
-    createdAt: visitorCreatedAt,
-    lastMutatedAt: visitorCreatedAt,
-});
-const editable = await createOrder({
-    customerName: "Customer",
-    submissionId: crypto.randomUUID(),
-    items: [
-        { inventoryId: kept.id, quantity: 2 },
-        { inventoryId: deleted.id, quantity: 1 },
-    ],
-    visitorId: visitorToken.id,
-});
+const visitorToken = await addVisitor();
+const editable = await checkoutOrder(
+    {
+        customerName: "Customer",
+        submissionId: crypto.randomUUID(),
+        items: [
+            { inventoryId: kept.id, quantity: 2 },
+            { inventoryId: deleted.id, quantity: 1 },
+        ],
+    },
+    visitorToken.id,
+);
 if (editable.status !== "success") throw new Error("order was not created");
+await db.delete(inventoryTable).where(eq(inventoryTable.id, deleted.id));
+const editableAfterDeletion = await getOrder(editable.order.id);
 assert.equal(
-    editable.order.items.find((item) => item.inventoryId === deleted.id)
+    editableAfterDeletion?.items.find((item) => item.inventoryId === deleted.id)
         ?.inventory,
     null,
 );
 assert.deepEqual(await fulfillOrder(editable.order.id), { status: "success" });
+const oversizedMergedNote = "x".repeat(1_500);
+assert.deepEqual(
+    await editOrder(editable.order.id, {
+        customerName: "Must not be saved",
+        items: [
+            {
+                inventoryId: kept.id,
+                quantity: 1,
+                adminNotes: oversizedMergedNote,
+            },
+            {
+                inventoryId: kept.id,
+                quantity: 1,
+                adminNotes: oversizedMergedNote,
+            },
+        ],
+    }),
+    { status: "invalid" },
+);
+assert.equal((await getOrder(editable.order.id))?.customerName, "Customer");
 assert.deepEqual(
     await editOrder(editable.order.id, {
         customerName: "Changed",
@@ -203,16 +260,6 @@ assert.equal(
     (await db.select().from(orderItemsTable).limit(1))[0]?.adminNotes,
     "Pack separately",
 );
-if (!editedOrder) throw new Error("edited order was not found");
-const customerOrder = publicOrder(editedOrder);
-assert.equal("adminNotes" in customerOrder, false);
-assert.equal("adminNotes" in customerOrder.items[0]!, false);
-assert.equal(JSON.stringify(customerOrder).includes("Pack separately"), false);
-assert.equal(
-    JSON.stringify(customerOrder).includes("Bargained separately"),
-    false,
-);
-
 const cartPageResponse = await pages.handle(
     new Request("http://localhost/cart"),
 );

@@ -58,6 +58,7 @@ export function CartContents({
                                         hx-target="#cart-region"
                                         hx-swap="innerHTML"
                                         hx-sync="#cart-region:queue all"
+                                        data-htmx-error="#cart-error"
                                     >
                                         <button
                                             class="rounded-md border border-gray-300 px-3 py-2 font-medium disabled:text-gray-300"
@@ -76,6 +77,7 @@ export function CartContents({
                                         hx-target="#cart-region"
                                         hx-swap="innerHTML"
                                         hx-sync="#cart-region:queue all"
+                                        data-htmx-error="#cart-error"
                                     >
                                         <input
                                             class="w-16 rounded-md border border-gray-300 px-2 py-2 text-center"
@@ -103,6 +105,7 @@ export function CartContents({
                                         hx-target="#cart-region"
                                         hx-swap="innerHTML"
                                         hx-sync="#cart-region:queue all"
+                                        data-htmx-error="#cart-error"
                                     >
                                         <button
                                             class="rounded-md border border-gray-300 px-3 py-2 font-medium disabled:text-gray-300"
@@ -124,6 +127,7 @@ export function CartContents({
                                     hx-target="#cart-region"
                                     hx-swap="innerHTML"
                                     hx-sync="#cart-region:queue all"
+                                    data-htmx-error="#cart-error"
                                 >
                                     <button
                                         class="rounded-md border border-red-300 px-3 py-2 text-sm font-medium text-red-700"

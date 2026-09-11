@@ -2,6 +2,7 @@ import { Elysia } from "elysia";
 import { api } from "./api";
 import { auth } from "./auth";
 import { pages } from "./pages";
+import { reconcileInventoryImageStorage } from "./api/inventory/service";
 
 if (!process.env.VERSION) {
     process.env.VERSION = (
@@ -10,6 +11,8 @@ if (!process.env.VERSION) {
 }
 
 console.log("🦊 VERSION", process.env.VERSION);
+
+await reconcileInventoryImageStorage();
 
 const app = new Elysia()
     .use(pages)

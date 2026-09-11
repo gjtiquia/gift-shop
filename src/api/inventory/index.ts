@@ -1,13 +1,22 @@
 import { Elysia } from "elysia";
+import { asc } from "drizzle-orm";
 import { db, inventoryTable } from "../../db";
 import { isValidCsrfRequest } from "../../auth/csrf";
 import {
     authSessionCookieName,
     validateAuthSessionCookie,
 } from "../../auth/sessionCookie";
-import { InventoryRow } from "../../pages/components/InventoryRow";
+import {
+    InventoryRow,
+    InventoryTableBody,
+} from "../../pages/components/InventoryRow";
 import { inventoryFormSchema, type InventoryForm } from "./model";
-import { createInventory, deleteInventory, updateInventory } from "./service";
+import {
+    createInventory,
+    deleteInventory,
+    updateInventory,
+    updateInventoryBatch,
+} from "./service";
 
 export const inventory = new Elysia({ prefix: "inventory" })
     .post(
@@ -31,6 +40,51 @@ export const inventory = new Elysia({ prefix: "inventory" })
         },
         { body: inventoryFormSchema },
     )
+    .post("/bulk", async ({ cookie, request, set }) => {
+        const rejection = await rejectInvalidMutation(
+            request,
+            cookie[authSessionCookieName],
+        );
+        if (rejection) return rejection;
+
+        const formData = await request.formData();
+        const result = await updateInventoryBatch(
+            formData.getAll("inventoryId").map((idValue) => {
+                const id = String(idValue);
+                const image = formData.get(`image.${id}`);
+                return {
+                    id,
+                    form: {
+                        name: stringFormValue(formData, `name.${id}`),
+                        price: stringFormValue(formData, `price.${id}`),
+                        quantity: stringFormValue(formData, `quantity.${id}`),
+                        hidden:
+                            formData.get(`hidden.${id}`) === "true"
+                                ? "true"
+                                : undefined,
+                        adminNotes: stringFormValue(
+                            formData,
+                            `adminNotes.${id}`,
+                        ),
+                        image: image instanceof File ? image : undefined,
+                    },
+                };
+            }),
+        );
+        if (result.status === "invalid") {
+            return invalidInventoryResponse(request, result.message);
+        }
+        if (result.status === "not-found") {
+            return inventoryNotFoundResponse();
+        }
+
+        set.headers["HX-Trigger"] = "inventory-saved";
+        const items = await db
+            .select()
+            .from(inventoryTable)
+            .orderBy(asc(inventoryTable.id));
+        return InventoryTableBody({ items });
+    })
     .put(
         "/:id",
         async ({ body, cookie, params, redirect, request }) => {
@@ -159,6 +213,11 @@ function inventoryNotFoundResponse() {
             "HX-Reswap": "innerHTML",
         },
     });
+}
+
+function stringFormValue(formData: FormData, name: string) {
+    const value = formData.get(name);
+    return typeof value === "string" ? value : undefined;
 }
 
 function isHtmxRequest(request: Request) {

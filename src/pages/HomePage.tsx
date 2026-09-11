@@ -78,6 +78,7 @@ export async function HomePage({ cartCount }: { cartCount: number }) {
                                     hx-target="find [data-cart-message]"
                                     hx-swap="innerHTML"
                                     hx-sync="this:queue all"
+                                    data-htmx-error={`#cart-message-${item.id}`}
                                 >
                                     <input
                                         class="w-16 rounded-md border border-gray-300 px-2 py-2 text-center"
@@ -99,7 +100,7 @@ export async function HomePage({ cartCount }: { cartCount: number }) {
                                     </button>
                                     <span
                                         id={`cart-message-${item.id}`}
-                                        class="text-sm text-green-700"
+                                        class="text-sm text-gray-600"
                                         aria-live="polite"
                                         data-cart-message
                                     ></span>

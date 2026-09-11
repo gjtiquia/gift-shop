@@ -8,29 +8,15 @@ import {
     checkoutCart,
     editOrder,
     fulfillOrder,
-    getVisitorOrder,
-    getVisitorOrders,
-    isOrderId,
     rejectOrder,
     restoreOrder,
-    type OrderView,
 } from "./service";
 import {
     getOrCreateVisitorSessionForMutation,
-    getVisitorSessionForRead,
     visitorSessionCookieName,
 } from "../../auth/visitorSession";
 
 export const orders = new Elysia({ prefix: "orders" })
-    .get("/", async ({ cookie, request }) => {
-        const visitor = await getVisitorSessionForRead(
-            cookie[visitorSessionCookieName],
-            request,
-        );
-        return visitor
-            ? (await getVisitorOrders(visitor.id)).map(publicOrder)
-            : [];
-    })
     .post(
         "/",
         async ({ body, cookie, redirect, request }) => {
@@ -57,21 +43,6 @@ export const orders = new Elysia({ prefix: "orders" })
             }),
         },
     )
-    .get("/:id", async ({ cookie, params, request, set }) => {
-        const visitor = await getVisitorSessionForRead(
-            cookie[visitorSessionCookieName],
-            request,
-        );
-        const order =
-            visitor && isOrderId(params.id)
-                ? await getVisitorOrder(visitor.id, params.id)
-                : null;
-        if (!order) {
-            set.status = 404;
-            return { error: "Order not found." };
-        }
-        return { order: publicOrder(order) };
-    })
     .post("/:id/edit", async ({ cookie, params, redirect, request }) => {
         const rejection = await rejectInvalidAdminMutation(request, cookie);
         if (rejection) return rejection;
@@ -152,23 +123,6 @@ export const orders = new Elysia({ prefix: "orders" })
             303,
         );
     });
-
-export function publicOrder(order: OrderView) {
-    return {
-        id: order.id,
-        customerName: order.customerName,
-        status: order.status,
-        createdAt: order.createdAt,
-        lastModifiedAt: order.lastModifiedAt,
-        fulfilledAt: order.fulfilledAt,
-        rejectedAt: order.rejectedAt,
-        items: order.items.map((item) => ({
-            inventoryId: item.inventoryId,
-            quantity: item.quantity,
-            inventory: item.inventory,
-        })),
-    };
-}
 
 async function rejectInvalidAdminMutation(
     request: Request,

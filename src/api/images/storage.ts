@@ -1,4 +1,4 @@
-import { mkdir, open, unlink } from "node:fs/promises";
+import { mkdir, open, readdir, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -110,11 +110,38 @@ export function storedImagePath(
     return join(directory, filename);
 }
 
+export async function listStoredImageFilenames(
+    directory = imageDataDirectory,
+): Promise<string[]> {
+    try {
+        return (await readdir(directory)).filter((filename) =>
+            storedImageFilenamePattern.test(filename),
+        );
+    } catch (error) {
+        if (
+            error instanceof Error &&
+            "code" in error &&
+            error.code === "ENOENT"
+        ) {
+            return [];
+        }
+        throw error;
+    }
+}
+
+export async function removeStoredImageFromDirectory(
+    filename: string,
+    directory: string,
+) {
+    return removeStoredImage(filename, unlink, directory);
+}
+
 export async function removeStoredImage(
     filename: string,
     removeFile: (path: string) => Promise<void> = unlink,
+    directory = imageDataDirectory,
 ) {
-    const path = storedImagePath(filename);
+    const path = storedImagePath(filename, directory);
     if (!path) return false;
 
     try {

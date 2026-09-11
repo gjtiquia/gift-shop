@@ -7,39 +7,35 @@ for (const section of document.querySelectorAll<HTMLElement>(
 }
 
 function setupInventoryEditor(section: HTMLElement) {
-    const editButton = section.querySelector<HTMLButtonElement>(
+    const formCandidate = section.querySelector<HTMLFormElement>(
+        "[data-js-inventoryBulkForm]",
+    );
+    const editCandidate = section.querySelector<HTMLButtonElement>(
         "[data-js-inventoryEdit]",
     );
-    const saveButton = section.querySelector<HTMLButtonElement>(
+    const saveCandidate = section.querySelector<HTMLButtonElement>(
         "[data-js-inventorySave]",
     );
-    const discardButton = section.querySelector<HTMLButtonElement>(
+    const discardCandidate = section.querySelector<HTMLButtonElement>(
         "[data-js-inventoryDiscard]",
     );
-    if (!editButton || !saveButton || !discardButton) return;
-    const edit = editButton;
-    const save = saveButton;
-    const discard = discardButton;
+    if (!formCandidate || !editCandidate || !saveCandidate || !discardCandidate)
+        return;
+    const form = formCandidate;
+    const edit = editCandidate;
+    const save = saveCandidate;
+    const discard = discardCandidate;
 
-    const updateForms = Array.from(
-        section.querySelectorAll<HTMLFormElement>(
-            "form[data-js-inventoryUpdateForm]",
-        ),
-    );
-    const dirtyForms = new Set<HTMLFormElement>();
-
-    section.addEventListener("input", markChangedForm);
-    section.addEventListener("change", markChangedForm);
     edit.addEventListener("click", () => setEditMode(true));
     discard.addEventListener("click", discardChanges);
-    save.addEventListener("click", saveChanges);
-
-    function markChangedForm(event: Event) {
-        const target = event.target;
-        if (!(target instanceof HTMLInputElement) || !target.form) return;
-        if (!target.form.matches("[data-js-inventoryUpdateForm]")) return;
-        dirtyForms.add(target.form);
-    }
+    section.addEventListener("inventory-saved", () => {
+        const errorSelector = form.dataset.htmxError;
+        const error = errorSelector
+            ? document.querySelector<HTMLElement>(errorSelector)
+            : null;
+        if (error) error.textContent = "";
+        setEditMode(false);
+    });
 
     function setEditMode(enabled: boolean) {
         for (const input of section.querySelectorAll<HTMLInputElement>(
@@ -64,8 +60,7 @@ function setupInventoryEditor(section: HTMLElement) {
     }
 
     function discardChanges() {
-        for (const form of updateForms) form.reset();
-        dirtyForms.clear();
+        form.reset();
         for (const input of section.querySelectorAll<HTMLInputElement>(
             "[data-js-imagePreview]",
         )) {
@@ -73,51 +68,4 @@ function setupInventoryEditor(section: HTMLElement) {
         }
         setEditMode(false);
     }
-
-    async function saveChanges() {
-        if (dirtyForms.size === 0) {
-            setEditMode(false);
-            return;
-        }
-        for (const form of dirtyForms) {
-            if (!form.reportValidity()) return;
-        }
-
-        save.disabled = true;
-        discard.disabled = true;
-        setInventoryError("");
-
-        try {
-            for (const form of dirtyForms) {
-                const response = await fetch(form.action, {
-                    method: form.method,
-                    body: new FormData(form),
-                    credentials: "same-origin",
-                    headers: { "HX-Request": "true" },
-                });
-                if (!response.ok) {
-                    throw new Error(
-                        (await response.text()) ||
-                            "Could not save inventory changes.",
-                    );
-                }
-            }
-            window.location.reload();
-        } catch (error) {
-            setInventoryError(
-                error instanceof Error
-                    ? error.message
-                    : "Could not save inventory changes.",
-            );
-            save.disabled = false;
-            discard.disabled = false;
-        }
-    }
-}
-
-function setInventoryError(message: string) {
-    const error = document.querySelector<HTMLElement>(
-        "[data-js-inventoryError]",
-    );
-    if (error) error.textContent = message;
 }

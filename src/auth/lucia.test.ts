@@ -157,7 +157,7 @@ test("a successful login creates a cookie-backed admin session", async () => {
     const adminHtml = await adminPage.text();
     expect(adminHtml).toContain("<title>Inventory | Gift Shop</title>");
     expect(adminHtml).not.toContain("data-reset-after-success");
-    expect(adminHtml).not.toContain("hx-post=");
+    expect(adminHtml).toContain('hx-post="/api/inventory/bulk"');
     expect(adminHtml).toContain("/public/index.js");
     expect(adminHtml).toMatch(
         /<script[^>]*defer[^>]*src="\/public\/htmx\.min\.js"/,
@@ -461,7 +461,8 @@ test("an admin can create and update inventory without an image", async () => {
         `aria-label="Hide new inventory item from catalogue"`,
     );
     expect(adminHtml).toContain(`method="post"`);
-    expect(adminHtml).toContain(`action="/api/inventory/${created.id}"`);
+    expect(adminHtml).toContain(`action="/api/inventory/bulk"`);
+    expect(adminHtml).toContain(`name="name.${created.id}"`);
     expect(adminHtml).toContain(`hx-delete="/api/inventory/${created.id}"`);
     expect(adminHtml).toContain(
         `aria-label="Name for inventory item ${created.id}"`,

@@ -1,9 +1,12 @@
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { db, imagesTable, inventoryTable } from "../../db";
 import { parsePrice } from "../../utils";
 import {
     ImageValidationError,
+    imageDataDirectory,
+    listStoredImageFilenames,
     removeStoredImage,
+    removeStoredImageFromDirectory,
     storeImage,
 } from "../images/storage";
 import type { InventoryForm } from "./model";
@@ -17,6 +20,16 @@ export type InventoryMutationResult =
 
 export type InventoryDeleteResult =
     { status: "success" } | { status: "invalid" } | { status: "not-found" };
+
+export interface BulkInventoryItem {
+    id: string;
+    form: InventoryForm;
+}
+
+export type BulkInventoryMutationResult =
+    | { status: "success" }
+    | { status: "invalid"; message: string }
+    | { status: "not-found" };
 
 export async function createInventory(
     form: InventoryForm,
@@ -135,6 +148,113 @@ export async function updateInventory(
     return { status: "success", item };
 }
 
+export async function updateInventoryBatch(
+    submittedItems: BulkInventoryItem[],
+): Promise<BulkInventoryMutationResult> {
+    const parsedItems: Array<{
+        id: number;
+        values: NonNullable<ReturnType<typeof parseInventoryForm>>;
+        image?: File;
+    }> = [];
+    const ids = new Set<number>();
+
+    for (const submitted of submittedItems) {
+        const id = parseInventoryId(submitted.id);
+        const values = parseInventoryForm(submitted.form);
+        if (id === null || !values || ids.has(id)) return invalidResult();
+        ids.add(id);
+        parsedItems.push({ id, values, image: submitted.form.image });
+    }
+
+    if (parsedItems.length === 0) return { status: "success" };
+
+    const existingItems = await db
+        .select({ id: inventoryTable.id })
+        .from(inventoryTable)
+        .where(
+            inArray(
+                inventoryTable.id,
+                parsedItems.map((item) => item.id),
+            ),
+        );
+    if (existingItems.length !== parsedItems.length) {
+        return { status: "not-found" };
+    }
+
+    const storedImages = new Map<
+        number,
+        Awaited<ReturnType<typeof storeImage>>
+    >();
+    try {
+        for (const item of parsedItems) {
+            const storedImage = await storeSubmittedImage(item.image);
+            if ("error" in storedImage) {
+                await discardStagedImages(storedImages.values());
+                return invalidResult(storedImage.error);
+            }
+            if (storedImage.image) storedImages.set(item.id, storedImage.image);
+        }
+    } catch (error) {
+        await retainStagedImagesForCleanup(storedImages.values());
+        throw error;
+    }
+
+    const now = new Date();
+    try {
+        db.transaction((transaction) => {
+            const transactionItems = transaction
+                .select({ id: inventoryTable.id })
+                .from(inventoryTable)
+                .where(
+                    inArray(
+                        inventoryTable.id,
+                        parsedItems.map((item) => item.id),
+                    ),
+                )
+                .all();
+            if (transactionItems.length !== parsedItems.length) {
+                throw new InventoryBatchConflictError();
+            }
+
+            for (const item of parsedItems) {
+                const storedImage = storedImages.get(item.id);
+                let imageId: number | undefined;
+                if (storedImage) {
+                    const [image] = transaction
+                        .insert(imagesTable)
+                        .values({
+                            filename: storedImage.filename,
+                            createdAt: now,
+                            lastModifiedAt: now,
+                        })
+                        .returning({ id: imagesTable.id })
+                        .all();
+                    imageId = image.id;
+                }
+
+                transaction
+                    .update(inventoryTable)
+                    .set({
+                        ...item.values,
+                        ...(imageId === undefined ? {} : { imageId }),
+                        lastModifiedAt: now,
+                    })
+                    .where(eq(inventoryTable.id, item.id))
+                    .run();
+            }
+        });
+    } catch (error) {
+        await retainStagedImagesForCleanup(storedImages.values());
+        if (error instanceof InventoryBatchConflictError) {
+            return { status: "not-found" };
+        }
+        throw error;
+    }
+
+    await cleanupUnreferencedImages();
+    return { status: "success" };
+}
+
 export async function deleteInventory(
     idValue: string,
 ): Promise<InventoryDeleteResult> {
@@ -200,8 +320,47 @@ function invalidResult(message = "Invalid inventory values.") {
     return { status: "invalid" as const, message };
 }
 
+class InventoryBatchConflictError extends Error {}
+
+export async function reconcileInventoryImageStorage(
+    directory = imageDataDirectory,
+) {
+    const trackedFilenames = new Set(
+        (
+            await db
+                .select({ filename: imagesTable.filename })
+                .from(imagesTable)
+        ).map((image) => image.filename),
+    );
+
+    for (const filename of await listStoredImageFilenames(directory)) {
+        if (trackedFilenames.has(filename)) continue;
+        if (!(await removeStoredImageFromDirectory(filename, directory))) {
+            throw new Error(`Could not remove orphaned image ${filename}.`);
+        }
+    }
+
+    await cleanupUnreferencedImages(directory);
+}
+
+async function discardStagedImages(images: Iterable<{ filename: string }>) {
+    for (const image of images) {
+        if (!(await removeStoredImage(image.filename))) {
+            await retainImageForCleanup(image.filename);
+        }
+    }
+}
+
+async function retainStagedImagesForCleanup(
+    images: Iterable<{ filename: string }>,
+) {
+    for (const image of images) {
+        await retainImageForCleanup(image.filename);
+    }
+}
+
 // Unreferenced image rows are durable retry records when a file cannot be removed.
-async function cleanupUnreferencedImages() {
+async function cleanupUnreferencedImages(directory = imageDataDirectory) {
     try {
         const images = await db
             .select({ id: imagesTable.id, filename: imagesTable.filename })
@@ -214,7 +373,13 @@ async function cleanupUnreferencedImages() {
                 .where(eq(inventoryTable.imageId, image.id))
                 .limit(1);
             if (reference) continue;
-            if (!(await removeStoredImage(image.filename))) continue;
+            if (
+                !(await removeStoredImageFromDirectory(
+                    image.filename,
+                    directory,
+                ))
+            )
+                continue;
 
             await db.delete(imagesTable).where(eq(imagesTable.id, image.id));
         }

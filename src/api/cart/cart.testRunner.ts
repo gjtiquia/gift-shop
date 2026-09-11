@@ -51,11 +51,14 @@ function request(
     );
 }
 
-for (const path of ["/", "/cart", "/orders", "/api/orders"]) {
+for (const path of ["/", "/cart", "/orders"]) {
     const anonymousRead = await request(path);
     assert.equal(anonymousRead.status, 200);
     assert.equal(anonymousRead.headers.get("set-cookie"), null);
 }
+const obsoleteOrdersApi = await request("/api/orders");
+assert.equal(obsoleteOrdersApi.status, 404);
+assert.equal(obsoleteOrdersApi.headers.get("set-cookie"), null);
 const invalidHome = await request("/", { cookie: "visitor_session=invalid" });
 assert.equal(invalidHome.status, 200);
 assert.equal(invalidHome.headers.get("set-cookie"), null);
@@ -340,22 +343,19 @@ assert.ok(orderLocation);
 const ownerOrderPage = await request(orderLocation, { cookie: firstCookie });
 assert.equal(ownerOrderPage.status, 200);
 assert.match(await ownerOrderPage.text(), /Kid One/);
-const ownerOrderApi = await request(`/api${orderLocation}`, {
+const obsoleteOrderApi = await request(`/api${orderLocation}`, {
     cookie: firstCookie,
 });
-assert.equal(ownerOrderApi.status, 200);
-assert.equal((await ownerOrderApi.json()).order.customerName, "Kid One");
+assert.equal(obsoleteOrderApi.status, 404);
 
 const visitorCountBeforeAnonymousOrderRead = (
     await db.select().from(visitorSessionsTable)
 ).length;
-for (const path of [orderLocation, `/api${orderLocation}`]) {
-    const missingVisitor = await request(path);
-    assert.equal(missingVisitor.status, 404);
-    assert.equal(missingVisitor.headers.get("set-cookie"), null);
-    const wrongVisitor = await request(path, { cookie: secondCookie });
-    assert.equal(wrongVisitor.status, 404);
-}
+const missingVisitor = await request(orderLocation);
+assert.equal(missingVisitor.status, 404);
+assert.equal(missingVisitor.headers.get("set-cookie"), null);
+const wrongVisitor = await request(orderLocation, { cookie: secondCookie });
+assert.equal(wrongVisitor.status, 404);
 assert.equal(
     (await db.select().from(visitorSessionsTable)).length,
     visitorCountBeforeAnonymousOrderRead,
