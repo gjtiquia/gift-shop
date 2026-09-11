@@ -19,7 +19,11 @@ export function CartContents({
 
     return (
         <div id="cart-contents" class="grid gap-4">
-            <p id="cart-error" class="font-medium text-red-700" role="alert">
+            <p
+                id="cart-error"
+                class="font-medium text-red-700 empty:hidden"
+                role="alert"
+            >
                 {error ?? ""}
             </p>
             {items.length === 0 ? (

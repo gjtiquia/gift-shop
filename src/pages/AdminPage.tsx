@@ -50,7 +50,7 @@ export async function AdminPage({ error }: AdminPageProps = {}) {
         >
             <p
                 id="inventory-error"
-                class="min-h-6 text-sm font-medium text-red-700"
+                class="min-h-6 text-sm font-medium text-red-700 empty:hidden"
                 data-js-inventoryError
                 role="alert"
             >
